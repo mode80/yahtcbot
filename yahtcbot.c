@@ -6,6 +6,7 @@
 #include <string.h> //strcmp, strlen, etc
 #include <math.h> // pow, sqrt, 
 #include <stdarg.h> // pow, sqrt, 
+#include <limits.h> // INT_MIN 
 // #include <pthread.h> // threads
 
 
@@ -59,9 +60,10 @@ intbuf* intbuf_new(size_t cap) {
 
 void intbuf_destroy(intbuf* in) { free(in); }
 
-void intbuf_recap(intbuf* in, size_t new_capacity) { 
-    in = realloc(in, sizeof(intbuf) + new_capacity * sizeof(int));
-    in->_cap = new_capacity;
+intbuf* intbuf_recap(intbuf* in, size_t new_capacity) { 
+    intbuf* recapped = realloc(in, sizeof(intbuf) + new_capacity * sizeof(int));
+    recapped->_cap = new_capacity;
+    return recapped;
 }
 
 int intbuf_get(intbuf* in, size_t i) { 
@@ -88,23 +90,20 @@ intbuf* intbuf_from_arr(int* vals, size_t cap) {
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-typedef struct { u8 arr[32][5]; } u8_32x5;
+// typedef struct { size_t count; ints8 arr[32]; } ints8s;
 
-//powerset for a given set of 5 elements
-u8_32x5 powerset(const int items[5]) {
-    int element_count = 5; 
-    int result_count = 32; //(1 << size); //set_size of powerset of n elements is (2**n) w the empty set
-    u8_32x5 result = (u8_32x5){};
-    for (int i = 0; i < result_count; i++) {  // Run from counter 000..0 to 111..1
+//powerset for a given set of elements
+ints8* powerset(const ints8 items, size_t* result_count) {
+    *result_count = (1 << items.count); //set_size of powerset of n elements is (2**n) w the empty set
+    ints8* result = malloc(*result_count * sizeof(ints8));
+    for (int i = 0; i < *result_count; i++) {  // Run from counter 000..0 to 111..1
         int inner_list_size = 0;
-        int inverse_list_idx = 4;
-        for (int j = 0; j < element_count; j++) {
+        for (int j = 0; j < items.count; j++) {
             if ((i & (1 << j)) > 0) { 
-                result.arr[i][inner_list_size++] = items[j]; 
-            } else {
-                result.arr[i][inverse_list_idx--] = SENTINEL; 
+                result[i].arr[inner_list_size++] = items.arr[j]; 
             }
         }
+        result[i].count = inner_list_size;
     }
     return result;
 }
@@ -521,23 +520,18 @@ Range outcomes_range_for(Selection selection){
 void cache_selection_ranges() {
 
     int s = 0;
-    int set_items_count=0;
-    // //powerset func below includes empty set SELECTION_RANGES[0] = (struct Range){0,1}; 
 
-    u8_32x5 combos = powerset( (int[5]){0,1,2,3,4} );
-    int result_count=32;
+    ints8 idxs0to4 = (ints8){5, {0,1,2,3,4} };
+    size_t result_count = 0; 
+    ints8* combos = powerset( idxs0to4, &result_count);
 
     for(int i=0; i<result_count; i++) {
-        set_items_count=0;
-        while (set_items_count < 5) {
-            if (combos.arr[i][set_items_count] == SENTINEL) { break; } 
-            set_items_count += 1;
-        }
-        int sets_count = n_take_r(6, set_items_count, false, true) ;
+        int sets_count = n_take_r(6, combos[i].count, false, true) ;
         SELECTION_RANGES[i] = (Range){s, s+sets_count}; 
         s += sets_count;
     } 
 
+    free(combos);
 }
 
 
@@ -563,6 +557,7 @@ void cache_selection_ranges() {
 //     }
 // }
 
+/*
 //preps the caches of roll outcomes data for every possible 5-die selection, where '0' represents an unselected die """
 void cache_roll_outcomes_data() { 
 
@@ -602,6 +597,7 @@ void cache_roll_outcomes_data() {
         free(result);
     } 
 } 
+*/
 
 /*
 
@@ -718,24 +714,7 @@ u8 score_slot_with_dice(Slot slot, DieVals sorted_dievals) {
 // MAIN 
 //-------------------------------------------------------------
 
-int main() {
-
-    // TESTING 
-
-    cache_roll_outcomes_data();
-        
-    // int items[6] = {1,2,3,4,5,6};
-    // int perm_count = 0;
-    // int** result;
-    // combos_with_rep(items, 6, 5, &result, &perm_count);
-
-    // for (int i=0; i < perm_count; i++) {
-    //     for (int j=0; j < 5; j++) {
-    //         printf("%d", result[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // free(result);
-
-}
+// int main() {
+// commented out for now so we can build with main() living the test.c file that #includes this one
+// }
 
