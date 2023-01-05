@@ -131,28 +131,43 @@ u64 n_take_r(u64 n, u64 r, bool order_matters/*=false*/, bool with_replacement/*
     }
 }
 
-void make_combos_with_rep(int *array, int n, int r, int *combination, int index, int **result, int *count) {
-    if (index == r) {
-        // Found a combination
-        result[*count] = malloc(sizeof(int) * r);
-        memcpy(result[*count], combination, sizeof(int) * r);
-        (*count)++;
-        return;
+void save_combo_to_results(ints8 items, ints8 *indices, int item_count, ints8* results, int* result_count) {
+    results[*result_count].count = item_count;    
+    for (int i=0; i<item_count; i++) {
+        results[*result_count].arr[i] = items.arr[indices->arr[i]];
     }
-    for (int i = 0; i < n; i++) {
-        combination[index] = array[i];
-        make_combos_with_rep(array, n, r, combination, index+1, result, count);
+    (*result_count)++;
+}
+
+void make_combos_with_replacement(ints8 items, int n, int r, ints8 *indices, ints8* results, int* result_count) {
+    //combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC"
+    // number items returned:  (n+r-1)! / r! / (n-1)!
+    save_combo_to_results(items, indices, r, results, result_count);
+    while(true){
+        int i =r;
+        while (i > 0) {
+            i--;
+            if (indices->arr[i] != n-1) break ; //find value of i to use next
+        }
+        if (indices->arr[i] == n-1) return; 
+        int new_index = indices->arr[i]+1;
+        for (int j=i; j<r; j++) {
+            indices->arr[j] = new_index;
+        }
+        save_combo_to_results(items, indices, indices->count, results, result_count);
     }
 }
 
-int **get_combos_with_rep(int *array, int n, int r, int *return_size) {
-    int **result = malloc(sizeof(int*) * 10000); // Allocate space for 10000 combinations
-    *return_size = 0;
-    int *combination = malloc(sizeof(int) * r);
-    make_combos_with_rep(array, n, r, combination, 0, result, return_size);
-    free(combination);
-    return result;
+ints8* get_combos_with_replacement(ints8 items, int r, int* result_count) { 
+    assert(r<=8);
+    ints8 indices = {r, {0,0,0,0,0,0,0,0} };
+    int n = items.count;
+    ints8* results = malloc(n_take_r(n,r,false,true) * sizeof(ints8));
+    *result_count=0;
+    make_combos_with_replacement(items, n, r, &indices, results, result_count);
+    return results;
 }
+
 
 float distinct_arrangements_for(int *dieval_vec, int dieval_vec_size) {
     u64 *key_counts = calloc(dieval_vec_size, sizeof(u64) );// store the counts of each value in the array;
