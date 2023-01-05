@@ -4,10 +4,6 @@
 
 #include "yahtcbot.c" 
 
-// Definition of the "ints8" struct and the "powerset" function
-// typedef struct { size_t count; int arr[8]; } ints8;
-// ints8* powerset(const ints8 items, size_t* result_count);
-
 void test_powerset() {
     // Test input
     ints8 items = {3, {1, 2, 3}};
@@ -105,6 +101,61 @@ void test_intbuf_from_arr() {
     intbuf_destroy(buf);
 }
 
+void test_n_take_r() {
+    assert(n_take_r(5, 2, true, true) == 25);  // 5^2 permutations with replacement
+    assert(n_take_r(5, 2, true, false) == 20);  // 5! / (5-2)! permutations without replacement
+    assert(n_take_r(5, 2, false, true) == 15);  // (5+2-1)! / (2! * (5-1)!) combinations with replacement
+    assert(n_take_r(5, 2, false, false) == 10);  // 5! / (2! * (5-2)!) combinations without replacement
+}
+
+typedef struct ints8_6{ int arr[6]; } ints8_6;
+
+void test_get_combos_with_replacement() {
+    int take_count = 2;
+    int return_size;
+    ints8 items = {3, {1, 2, 3} };
+    ints8 (*combos)[6] = (ints8(*)[6])get_combos_with_replacement(items, 2, &return_size); //TODO understand this black magic
+
+    // Check number of combinations
+    assert(return_size == n_take_r(3,2,false,true));
+
+    // Check that all combinations are present
+    int expected_combinations[][2] = {{1, 1}, {1, 2}, {1, 3}, {2, 2}, {2, 3}, {3, 3}};
+    for (int i = 0; i < return_size; i++) {
+        ints8 combo = (*combos)[i];
+        bool found = false;
+        for (int j = 0; j < 6; j++) {
+            if (memcmp(combo.arr, expected_combinations[j], sizeof(int)*take_count) == 0) {
+                found = true;
+                break;
+            }
+        }
+        assert(found);
+    }
+
+    free(combos);
+}
+
+void test_distinct_arrangements_for() {
+    // Test 1: Test with a list of unique values
+    ints8 dieval_vec1 = {5,{1, 2, 3, 4, 5}};
+    float expected_result1 = 120.0;
+    float result1 = distinct_arrangements_for(dieval_vec1);
+    assert(result1 == expected_result1);
+
+    // Test 2: Test with a list of all the same value
+    ints8 dieval_vec2 = {5,{1, 1, 1, 1, 1}};
+    float expected_result2 = 1.0;
+    float result2 = distinct_arrangements_for(dieval_vec2);
+    assert(result2 == expected_result2);
+
+    // Test 3: Test with a list of mixed values
+    ints8 dieval_vec3 = {4,{1, 2, 2, 3}};
+    float expected_result3 = 12.0;
+    float result3 = distinct_arrangements_for(dieval_vec3);
+    assert(result3 == expected_result3);
+}
+
 int main() {
 
     test_powerset();
@@ -114,7 +165,12 @@ int main() {
     test_intbuf_get();
     test_intbuf_set();
     test_intbuf_from_arr();
- 
-    printf("tests passed.\n");
+
+    test_n_take_r();
+
+    test_get_combos_with_replacement();
+    test_distinct_arrangements_for();  
+
+    printf("Tests PASSED\n");
     return 0;
 }

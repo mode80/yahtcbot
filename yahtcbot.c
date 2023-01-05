@@ -132,6 +132,7 @@ u64 n_take_r(u64 n, u64 r, bool order_matters/*=false*/, bool with_replacement/*
 }
 
 void save_combo_to_results(ints8 items, ints8 *indices, int item_count, ints8* results, int* result_count) {
+    //helper function to _get_combos_with_replacement
     results[*result_count].count = item_count;    
     for (int i=0; i<item_count; i++) {
         results[*result_count].arr[i] = items.arr[indices->arr[i]];
@@ -140,8 +141,7 @@ void save_combo_to_results(ints8 items, ints8 *indices, int item_count, ints8* r
 }
 
 void make_combos_with_replacement(ints8 items, int n, int r, ints8 *indices, ints8* results, int* result_count) {
-    //combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC"
-    // number items returned:  (n+r-1)! / r! / (n-1)!
+    //helper function to _get_combos_with_replacement
     save_combo_to_results(items, indices, r, results, result_count);
     while(true){
         int i =r;
@@ -159,6 +159,8 @@ void make_combos_with_replacement(ints8 items, int n, int r, ints8 *indices, int
 }
 
 ints8* get_combos_with_replacement(ints8 items, int r, int* result_count) { 
+    //combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC"
+    // number items returned:  (n+r-1)! / r! / (n-1)!
     assert(r<=8);
     ints8 indices = {r, {0,0,0,0,0,0,0,0} };
     int n = items.count;
@@ -168,19 +170,21 @@ ints8* get_combos_with_replacement(ints8 items, int r, int* result_count) {
     return results;
 }
 
-
-float distinct_arrangements_for(int *dieval_vec, int dieval_vec_size) {
-    u64 *key_counts = calloc(dieval_vec_size, sizeof(u64) );// store the counts of each value in the array;
-    for (int i = 0; i < dieval_vec_size; i++) { key_counts[dieval_vec[i]]++; }
+float distinct_arrangements_for(ints8 dieval_vec) {
+    u64 key_counts[dieval_vec.count+1];
+    memset(key_counts, 0, sizeof(key_counts));
+    for (int i = 0; i < dieval_vec.count; i++) { 
+        int idx = dieval_vec.arr[i];
+        key_counts[idx]++; 
+    }
     int divisor = 1;
     int non_zero_dievals = 0;
-    for (int i = 0; i < dieval_vec_size; i++) {
+    for (int i = 0; i <= dieval_vec.count; i++) {
         if (key_counts[i] != 0) {
             divisor *= factorial(key_counts[i]);
             non_zero_dievals += key_counts[i];
         }
     }
-    free(key_counts);
     return (f32)(factorial(non_zero_dievals) / divisor);
 }
 
@@ -236,7 +240,6 @@ int** uniquePermsOf5Ints(int *array, int *return_size) {
     uniqePerms(array, 0, 4, result, return_size);
     return result;
 }
-
 
 void print_state_choices_header() { 
     printf("choice_type,choice,dice,rolls_remaining,upper_total,yahtzee_bonus_avail,open_slots,expected_value");
