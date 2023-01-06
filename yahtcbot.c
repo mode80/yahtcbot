@@ -205,11 +205,7 @@ int countTrailingZeros(int x) {
 //     int* it;
 // } LenPrefixedInts;
 
-void swap(int *a, int *b) {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
-}
+void swap(int *a, int *b) { int temp = *a; *a = *b; *b = temp; }
 
 void uniqePerms(int *array, int start, int end, int **result, int *count) {
     if (start == end) { // Found a permutation
@@ -357,11 +353,9 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
                             50,51,52,53,54,55,56,57,58,59,
                             60,61,62,63};
 
-    typedef struct IntArray64 {int guts[64];} IntArray64;// C hack to allow returning a fixed size array
-
     Slots used_upper_slots(Slots self) {
-        Slots all_bits_except_unused_uppers = ~self; // "unused" slots (as encoded in .data) are not "previously used", so blank those out
-        Slots all_upper_slot_bits = (u16) ((1<<7)-2);  // upper slot bits are those from 2^1 through 2^6 (.data encoding doesn't use 2^0)
+        Slots all_bits_except_unused_uppers = ~self; // "unused" slots are not "previously used", so blank those out
+        Slots all_upper_slot_bits = (u16) ((1<<7)-2);  // upper slot bits are those from 2^1 through 2^6 (encoding doesn't use 2^0)
         Slots previously_used_upper_slot_bits = (u16) (all_bits_except_unused_uppers & all_upper_slot_bits);
         return previously_used_upper_slot_bits;
     } 
@@ -374,7 +368,7 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         return sum*5;
     } 
 
-    IntArray64 useful_upper_totals(Slots self) { 
+    ints64 useful_upper_totals(Slots self) { 
         int* totals = zero_thru_63;
         Slots used_uppers = used_upper_slots(self);
         bool all_even = true;
@@ -393,10 +387,15 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         int best_unused_slot_total = best_upper_total(self);
         // totals = (x for x in totals if x + best_unused_slot_total >=63 || x==0)
         // totals = from x in totals where (x + best_unused_slot_total >=63 || x==0) select x
+        ints64 result = {};
+        int j=0;
         for (int i=0; i<64; i++){ 
-            if (!(totals[i] + best_unused_slot_total >= 63 || totals[i]==0)) totals[i]=SENTINEL;
+            if (totals[i]!=SENTINEL && totals[i] + best_unused_slot_total >= 63 || totals[i]==0) {
+                result.arr[j]=totals[i];
+                j++;
+            }
         } 
-        return (struct IntArray64){*totals}; 
+        return result;  
     }
 
 
