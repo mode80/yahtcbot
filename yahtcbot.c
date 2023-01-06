@@ -24,9 +24,6 @@ typedef u8 Choice;
 typedef u8 DieVal;
 typedef u8 Slot;
 
-// typedef struct { int guts[5]; } FiveInts;
-// typedef struct { FiveInts guts[220]; } TwoTwentyOfFiveInts;
-
 Slot ACES = 1; Slot TWOS = 2; Slot THREES = 3;
 Slot FOURS = 4; Slot FIVES = 5; Slot SIXES = 6;
 Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
@@ -297,7 +294,6 @@ DieVals dievals_from_intstar(int* dievals, int count) {
     return result;
 }
 
-
 DieVal dievals_get(const DieVals self, int index) {
     return (self >> (index*3)) & 0b111;
 }
@@ -352,15 +348,9 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         return (self & mask); //# force off
     } 
 
-    // a non-exact but fast estimate of relevant_upper_totals
-    // ie the unique and relevant "upper bonus total" that could have occurred from the previously used upper slots
-    int* zero_thru_63 = (int[64]){0,1,2,3,4,5,6,7,8,9,
-                            10,11,12,13,14,15,16,17,18,19,
-                            20,21,22,23,24,25,26,27,28,29,
-                            30,31,32,33,34,35,36,37,38,39,
-                            40,41,42,43,44,45,46,47,48,49,
-                            50,51,52,53,54,55,56,57,58,59,
-                            60,61,62,63};
+    int* zero_thru_63 = (int[64]){0,1,2,3,4,5,6,7,8,9, 10,11,12,13,14,15,16,17,18,19,
+            20,21,22,23,24,25,26,27,28,29, 30,31,32,33,34,35,36,37,38,39,
+            40,41,42,43,44,45,46,47,48,49, 50,51,52,53,54,55,56,57,58,59, 60,61,62,63};
 
     Slots used_upper_slots(Slots self) {
         Slots all_bits_except_unused_uppers = ~self; // "unused" slots are not "previously used", so blank those out
@@ -377,6 +367,8 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         return sum*5;
     } 
 
+    // a non-exact but fast estimate of relevant_upper_totals
+    // ie the unique and relevant "upper bonus total" that could have occurred from the previously used upper slots
     ints64 useful_upper_totals(Slots self) { 
         int* totals = zero_thru_63;
         Slots used_uppers = used_upper_slots(self);
@@ -642,7 +634,12 @@ func output(state :GameState, choice_ev :ChoiceEV ){
 
 u8 upperbox(const u8 boxnum, const DieVals sorted_dievals) { 
     u8 sum=0;
-    for (int i=5; i<5; i++) {if (dievals_get(sorted_dievals,i)==boxnum) {sum+=boxnum;} }
+    for (int i=0; i<5; i++) {
+        u8 got_val = dievals_get(sorted_dievals,i);
+        if (got_val==boxnum) {
+            sum+=boxnum;
+        } 
+    }
     return sum;
 } 
 

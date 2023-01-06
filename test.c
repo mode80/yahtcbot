@@ -304,6 +304,34 @@ void test_cache_selection_ranges() {
     second_range.stop=6;
 }
 
+void test_score_slot_with_dice() {
+    DieVals dice = dievals_from_5ints((int[5]){1, 1, 1, 1, 1});
+    assert(score_slot_with_dice(ACES, dice) == 5);
+
+    dice = dievals_from_5ints((int[5]){3, 4, 4, 4, 4});
+    assert(score_slot_with_dice(FOURS, dice) == 16);
+
+    dice = dievals_from_5ints((int[5]){2, 2, 2, 4, 4});
+    assert(score_slot_with_dice(THREE_OF_A_KIND, dice) == 14);
+
+    dice = dievals_from_5ints((int[5]){1, 1, 1, 1, 5});
+    assert(score_slot_with_dice(FOUR_OF_A_KIND, dice) == 9);
+ 
+    dice = dievals_from_5ints((int[5]){3, 3, 6, 6, 6});
+    assert(score_slot_with_dice(FULL_HOUSE, dice) == 25);
+       
+    dice = dievals_from_5ints((int[5]){2, 3, 4, 5, 5});
+    assert(score_slot_with_dice(SM_STRAIGHT, dice) == 30);
+
+    dice = dievals_from_5ints((int[5]){1, 2, 3, 4, 5});
+    assert(score_slot_with_dice(LG_STRAIGHT, dice) == 40);
+
+    dice = dievals_from_5ints((int[5]){6, 6, 6, 6, 6});
+    assert(score_slot_with_dice(YAHTZEE, dice) == 50);
+
+    dice = dievals_from_5ints((int[5]){1, 2, 3, 4, 5});
+    assert(score_slot_with_dice(CHANCE, dice) == 15);
+}
 
 int main() {
 
@@ -325,7 +353,8 @@ int main() {
 
     test_cache_sorted_dievals();
     test_cache_selection_ranges();
- 
+    test_score_slot_with_dice();  
+    
     printf("Tests PASSED\n");
     return 0;
 }
