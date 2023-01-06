@@ -33,7 +33,7 @@ Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
 Slot FULL_HOUSE = 9; Slot SM_STRAIGHT = 10; 
 Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
-const int SENTINEL = -1; 
+const int SENTINEL = INT_MIN; 
 typedef struct { int start; int stop; } Range;
 int cores;
 
@@ -196,44 +196,36 @@ int countTrailingZeros(int x) {
      return lookup[(-x & x) % 37];
 }
 
-// typedef struct {
-//     int len;
-//     int* it;
-// } SizedInts;
+void swap(int* a, int* b) { int temp = *a; *a = *b; *b = temp; } //helper to get_unique_perms()
 
-// typedef struct {
-//     int* it;
-// } LenPrefixedInts;
-
-void swap(int *a, int *b) { int temp = *a; *a = *b; *b = temp; }
-
-void uniqePerms(int *array, int start, int end, int **result, int *count) {
-    if (start == end) { // Found a permutation
-        result[*count] = malloc(sizeof(int) * (end+1));
-        memcpy(result[*count], array, sizeof(int) * (end+1));
-        (*count)++;
+void make_unique_perms(ints8 items, int start, ints8 *result, int *counter) {
+    //helper to get_unique_perms()
+    if (start == items.count-1) { // Found a permutation
+        result[*counter] = items; 
+        (*counter)++;
     } else {
-        for (int i = start; i <= end; i++) {
-            // Check if the current element is already present in the permutation
-            int duplicate = 0;
+        for (int i = start; i < items.count; i++) {
+            bool dupe = false;// Check if the current element is already present in the permutation
             for (int j = start; j < i; j++) {
-                if (array[i] == array[j]) {
-                    duplicate = 1;
+                if (items.arr[i] == items.arr[j]) {
+                    dupe = true;
                     break;
                 }
             }
-            if (duplicate) continue;
-            swap(&array[start], &array[i]);
-            uniqePerms(array, start+1, end, result, count);
-            swap(&array[start], &array[i]);
+            if (dupe) continue;
+            swap(&items.arr[start], &items.arr[i]);
+            make_unique_perms(items, start+1, result, counter);
+            swap(&items.arr[start], &items.arr[i]);
         }
     }
 }
 
-int** uniquePermsOf5Ints(int *array, int *return_size) {
-    int** result = malloc(sizeof(int*) * 220); // Allocate space for 220 permutations 
-    *return_size = 0;
-    uniqePerms(array, 0, 4, result, return_size);
+ints8* get_unique_perms(ints8 items, int* result_count) {
+    assert(items.count > 0);
+    int n = factorial(items.count);// this is too big when there are dupes, but sufficient otherwise
+    ints8* result = malloc(sizeof(ints8) * n);//map malloced memory onto a locally sized var for easier debugging  
+    *result_count = 0;
+    make_unique_perms(items, 0, result, result_count);
     return result;
 }
 
@@ -281,13 +273,30 @@ DieVals dievals_init(DieVal dievals[5]) {
     return result;
 }
 
-DieVals dievals_init_w_ints(int dievals[5]) {
+DieVals dievals_from_5ints(int dievals[5]) {
     u16 result = 0;
     for (int i = 0; i < 5; i++){ 
         result |= (dievals[i] << (i*3));
     } 
     return result;
 }
+
+DieVals dievals_from_ints8(ints8 dievals) {
+    u16 result = 0;
+    for (int i = 0; i < dievals.count; i++){ 
+        result |= (dievals.arr[i] << (i*3));
+    } 
+    return result;
+}
+
+DieVals dievals_from_intstar(int* dievals, int count) {
+    u16 result = 0;
+    for (int i = 0; i < count; i++){ 
+        result |= (dievals[i] << (i*3));
+    } 
+    return result;
+}
+
 
 DieVal dievals_get(const DieVals self, int index) {
     return (self >> (index*3)) & 0b111;
@@ -422,7 +431,7 @@ typedef struct DieValsID {
 typedef struct Outcome { 
     DieVals dievals;
     DieVals mask; // stores a pre-made mask for blitting this outcome onto a GameState.DieVals.data u16 later
-    f32 arrangements; // how many indistinguisable ways can these dievals be arranged (ie swapping identical dievals)
+    f32 arrangements; // how many indistinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
 } Outcome;
 
 /*
@@ -521,7 +530,7 @@ const int pow_2_30 = 2<<30;
 
 
 // returns a range which corresponds the precomputed dice roll outcome data corresponding to the given selection
-Range outcomes_range_for(Selection selection){
+Range outcome_range_for(Selection selection){
     int idx = RANGE_IDX_FOR_SELECTION[selection];
     Range range = SELECTION_RANGES[idx]; 
     return range;
@@ -552,27 +561,25 @@ void cache_selection_ranges() {
 }
 
 
-// // for fast access later, this generates an array of dievals in sorted form, 
-// // along with each's unique "ID" between 0-252, indexed by DieVals data
-// void cache_sorted_dievals() { 
+// for fast access later, this generates an array of dievals in sorted form, 
+// along with each's unique "ID" between 0-252, indexed by DieVals data
+void cache_sorted_dievals() { 
     
-//     SORTED_DIEVALS[0] = (DieValsID){}; // first one is for the special wildcard 
-//     int one_to_six[6] = {1,2,3,4,5,6}; 
-//     int** combos; int combos_size;
-//     combos_with_rep(one_to_six, 6, 5, &combos, &combos_size);
- 
-//     int perm_count;
-//     for (int i=0; i<combos_size; i++) {
-//         int* combo = combos[i];
-//         DieVals dv_combo = dievals_init_w_ints(combo);
-//         int** int_perms = uniquePermsOf5Ints(combo,&perm_count);
-//         for (int j=0; j<perm_count; j++) {
-//             int* perm = int_perms[j];
-//             DieVals dv_perm = dievals_init_w_ints(perm);
-//             SORTED_DIEVALS[dv_perm] = (DieValsID){dv_combo, i};
-//         }
-//     }
-// }
+    SORTED_DIEVALS[0] = (DieValsID){}; // first one is for the special wildcard 
+    ints8 one_to_six = {.count=6, .arr={1,2,3,4,5,6} }; 
+    int combos_size;
+    ints8* combos = get_combos_with_replacement(one_to_six, 5, &combos_size);
+    int perm_count=0;
+    for (int i=0; i<combos_size; i++) {
+        DieVals dv_sorted = dievals_from_ints8(combos[i]);
+        ints8* ints8_perms = get_unique_perms(combos[i], &perm_count);
+        for (int j=0; j<perm_count; j++) {
+            ints8 perm = ints8_perms[j];
+            DieVals dv_perm = dievals_from_ints8(perm);
+            SORTED_DIEVALS[dv_perm] = (DieValsID){.dievals=dv_sorted, .id=i};
+        }
+    }
+}
 
 /*
 //preps the caches of roll outcomes data for every possible 5-die selection, where '0' represents an unselected die """

@@ -156,47 +156,6 @@ void test_distinct_arrangements_for() {
     assert(result3 == expected_result3);
 }
 
-void test_uniquePermsOf5Ints() {
-    // Test 1: Test with a list of unique values
-    int array1[] = {1, 2, 3, 4, 5};
-    int return_size1;
-    int** result1 = uniquePermsOf5Ints(array1, &return_size1);
-    assert(return_size1 == 120);
-    for (int i = 0; i < return_size1; i++) {
-        int* perm = result1[i];
-        assert(perm[0] != perm[1] && perm[1] != perm[2] && perm[2] != perm[3] && perm[3] != perm[4] && perm[4] != perm[0]);
-    }
-
-    // Test 2: Test with a list of all the same value
-    int array2[] = {1, 1, 1, 1, 1};
-    int return_size2;
-    int** result2 = uniquePermsOf5Ints(array2, &return_size2);
-    assert(return_size2 == 1);
-    for (int i = 0; i < return_size2; i++) {
-        int* perm = result2[i];
-        assert(perm[0] == perm[1] && perm[1] == perm[2] && perm[2] == perm[3] && perm[3] == perm[4] && perm[4] == perm[0]);
-    }
-
-    // Test 3: Test with a list of mixed values
-    int array3[] = {1, 2, 2, 3, 3};
-    int return_size3;
-    int** result3 = uniquePermsOf5Ints(array3, &return_size3);
-    assert(return_size3 == 30);
-    for (int i = 0; i < return_size3; i++) {
-        int* perm = result3[i];
-        int count1 = 0;
-        int count2 = 0;
-        int count3 = 0;
-        for (int j = 0; j < 5; j++) {
-            if (perm[j] == 1) count1++;
-            else if (perm[j] == 2) count2++;
-            else if (perm[j] == 3) count3++;
-        }
-        assert(count1 == 1 && count2 == 2 && count3 == 2);
-    }
-
-}
-
 void test_dievals_functions() {
     // Test 1: Test dievals_empty
     DieVals empty = dievals_empty();
@@ -209,7 +168,7 @@ void test_dievals_functions() {
 
     // Test 3: Test dievals_init_w_ints
     int dievals2[5] = {6, 5, 4, 3, 2};
-    DieVals result2 = dievals_init_w_ints(dievals2);
+    DieVals result2 = dievals_from_5ints(dievals2);
     assert(result2 == ((6 << 0) | (5 << 3) | (4 << 6) | (3 << 9) | (2 << 12)));
 
     // Test 4: Test dievals_get
@@ -270,6 +229,60 @@ void test_slots_functions() {
     }
 }
 
+void test_get_unique_perms() {
+    // Test with an array of unique elements
+    ints8 items1 = { .arr = {1, 2, 3}, .count = 3 };
+    int result_count1;
+    ints8 *result1 = get_unique_perms(items1, &result_count1);
+    assert(result_count1 == 6);
+    free(result1);
+
+    // Test with an array containing duplicate elements
+    ints8 items2 = { .arr = {1, 2, 2}, .count = 3 };
+    int result_count2;
+    ints8 *result2 = get_unique_perms(items2, &result_count2);
+    assert(result_count2 == 3);
+    free(result2);
+
+    // Test with 4 elements and a dupe 
+    ints8 items = { .arr={1, 2, 2, 3}, .count=4 };
+    int result_count;
+    ints8* result = get_unique_perms(items, &result_count);
+    assert(result_count == 12); // 4! / (2! * 1!) =12 
+    free(result);
+}
+
+int compare_ints(const void* a, const void* b) {
+    int x = *(int*)a; int y = *(int*)b;
+    if (x < y) { return -1; } else if (x > y) { return 1; } else { return 0; }
+}
+
+void test_cache_sorted_dievals() {
+    cache_sorted_dievals();
+
+    // Check that the first element in SORTED_DIEVALS is the special wildcard
+    assert(SORTED_DIEVALS[0].id == 0);
+    assert(SORTED_DIEVALS[0].dievals == 0);
+
+    // Check that all other elements in SORTED_DIEVALS are set correctly
+    for (int i = 1; i < 32767; i++) {
+        DieValsID dieval_id = SORTED_DIEVALS[i];
+        if (dieval_id.id == 0) { continue; // skip the special wildcard }
+
+        // Check that dv_id.id is the index of dv_id.dievals in SORTED_DIEVALS
+        assert(SORTED_DIEVALS[dieval_id.dievals].id == dieval_id.id);
+
+        // Check that permutation dv_id.dievals is equal to i when i is treated as a DieVals and sorted
+        ints8 dv_ints_to_sort = { .count = 5 };
+        for (int j=0; j<5; j++){ dv_ints_to_sort.arr[j] = dievals_get(i, j); }        
+        qsort(dv_ints_to_sort.arr, 5, sizeof(int), compare_ints);
+        DieVal sorted_dievals = dievals_from_ints8(dv_ints_to_sort);
+        assert(SORTED_DIEVALS[i].dievals = sorted_dievals);
+
+        }
+    }
+}
+
 
 int main() {
 
@@ -285,10 +298,13 @@ int main() {
 
     test_get_combos_with_replacement();
     test_distinct_arrangements_for();  
-    test_uniquePermsOf5Ints();
     test_dievals_functions();
     test_slots_functions();
+    test_get_unique_perms(); 
 
+    test_cache_sorted_dievals();
+ 
     printf("Tests PASSED\n");
     return 0;
 }
+
