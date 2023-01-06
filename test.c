@@ -283,6 +283,27 @@ void test_cache_sorted_dievals() {
     }
 }
 
+void test_cache_selection_ranges() {
+    // Call cache_selection_ranges to populate the SELECTION_RANGES array
+    cache_selection_ranges();
+
+    // Verify that the correct number of Range structures was generated
+    assert(sizeof(SELECTION_RANGES) / sizeof(Range) == 32);
+
+    // Verify some rangges are is correct as per tested Julia implementation
+    Range final_range = SELECTION_RANGES[31];
+    final_range.start=1431;
+    final_range.stop=1682;
+
+    Range first_range = SELECTION_RANGES[0];
+    first_range.start=0;
+    first_range.stop=0;
+    
+    Range second_range = SELECTION_RANGES[0];
+    second_range.start=1;
+    second_range.stop=6;
+}
+
 
 int main() {
 
@@ -303,6 +324,7 @@ int main() {
     test_get_unique_perms(); 
 
     test_cache_sorted_dievals();
+    test_cache_selection_ranges();
  
     printf("Tests PASSED\n");
     return 0;
