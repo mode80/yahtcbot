@@ -1,28 +1,5 @@
-#include <stdio.h> // printf
-#include <unistd.h> // sysconf for thread count
-#include <stdbool.h> // bools
-#include <stdlib.h> // rand, srand, malloc, free
-#include <assert.h> // assert 
-#include <string.h> //strcmp, strlen, etc
-#include <math.h> // pow, sqrt, 
-#include <stdarg.h> // pow, sqrt, 
-#include <limits.h> // INT_MIN 
-// #include <pthread.h> // threads
-
-
-// typedef size_t usize;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef size_t usize;
-typedef float f32;
-typedef double f64; // lazy Rust-like abbreviations
-
-typedef u8 Selection; 
-typedef u8 Choice;
-typedef u8 DieVal;
-typedef u8 Slot;
+#include "yahtcbot.h"
+void run_tests();  // forward declare unit test runner found in test.c
 
 Slot ACES = 1; Slot TWOS = 2; Slot THREES = 3;
 Slot FOURS = 4; Slot FIVES = 5; Slot SIXES = 6;
@@ -30,55 +7,48 @@ Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
 Slot FULL_HOUSE = 9; Slot SM_STRAIGHT = 10; 
 Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
-const int SENTINEL = INT_MIN; 
-typedef struct { int start; int stop; } Range;
-int cores;
-
-typedef struct { size_t count; int arr[8]; } ints8;
-typedef struct { size_t count; int arr[16]; } ints16;
-typedef struct { size_t count; int arr[32]; } ints32;
-typedef struct { size_t count; int arr[64]; } ints64;
-typedef struct { size_t count; int arr[128]; } ints128;
+int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
+const int SENTINEL=INT_MIN;
 
 //-------------------------------------------------------------
 // INTBUF 
 //-------------------------------------------------------------
 
-typedef struct intbuf{ 
-    size_t _cap; 
-    int _arr[]; 
-} intbuf;
+// typedef struct intbuf{ 
+//     size_t _cap; 
+//     int _arr[]; 
+// } intbuf;
 
-intbuf* intbuf_new(size_t cap) { 
-    intbuf* result =  malloc( sizeof(intbuf) + cap*sizeof(int) ); 
-    result->_cap = cap;
-    return result;
-}
+// intbuf* intbuf_new(size_t cap) { 
+//     intbuf* result =  malloc( sizeof(intbuf) + cap*sizeof(int) ); 
+//     result->_cap = cap;
+//     return result;
+// }
 
-void intbuf_destroy(intbuf* in) { free(in); }
+// void intbuf_destroy(intbuf* in) { free(in); }
 
-intbuf* intbuf_recap(intbuf* in, size_t new_capacity) { 
-    intbuf* recapped = realloc(in, sizeof(intbuf) + new_capacity * sizeof(int));
-    recapped->_cap = new_capacity;
-    return recapped;
-}
+// intbuf* intbuf_recap(intbuf* in, size_t new_capacity) { 
+//     intbuf* recapped = realloc(in, sizeof(intbuf) + new_capacity * sizeof(int));
+//     recapped->_cap = new_capacity;
+//     return recapped;
+// }
 
-int intbuf_get(intbuf* in, size_t i) { 
-    assert(i < in->_cap);
-    return in->_arr[i]; 
-}
+// int intbuf_get(intbuf* in, size_t i) { 
+//     assert(i < in->_cap);
+//     return in->_arr[i]; 
+// }
 
-void intbuf_set(intbuf* in, size_t i, int val) { 
-    assert(i < in->_cap);
-    in->_arr[i] = val;; 
-}
+// void intbuf_set(intbuf* in, size_t i, int val) { 
+//     assert(i < in->_cap);
+//     in->_arr[i] = val;; 
+// }
 
-intbuf* intbuf_from_arr(int* vals, size_t cap) { 
-    intbuf* result = intbuf_new(cap);
-    result->_cap = cap;
-    memcpy(result->_arr, vals, cap * sizeof(int));
-    return result;
-}
+// intbuf* intbuf_from_arr(int* vals, size_t cap) { 
+//     intbuf* result = intbuf_new(cap);
+//     result->_cap = cap;
+//     memcpy(result->_arr, vals, cap * sizeof(int));
+//     return result;
+// }
 
 
 //-------------------------------------------------------------
@@ -258,8 +228,6 @@ void print_state_choices_header() {
 //DieVals
 //-------------------------------------------------------------=#
 
-typedef u16 DieVals ; // 5 dievals, each from 0 to 6, can be encoded in 2 bytes total, each taking 3 bits{ 
-
 DieVals dievals_empty() { return 0; }
 
 DieVals dievals_init(DieVal dievals[5]) {
@@ -301,8 +269,6 @@ DieVal dievals_get(const DieVals self, int index) {
 //-------------------------------------------------------------
 // SLOTS 
 // ------------------------------------------------------------
-
-typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
 
     Slots slots_empty() { return 0; } 
 
@@ -418,46 +384,6 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         } 
         return result;  
     }
-
-
-//-------------------------------------------------------------
-//ChoiceEV
-//-------------------------------------------------------------
-typedef struct ChoiceEV {
-    Choice choice;
-    f32 ev;
-} ChoiceEV;
-
-//-------------------------------------------------------------
-//DieValsID
-//-------------------------------------------------------------
-typedef struct DieValsID {  
-    DieVals dievals;
-    u8 id;  // the id is a kind of offset that later helps us fast-index into the ev_cache 
-            // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
-} DieValsID;
-
-//-------------------------------------------------------------
-// Outcome
-//-------------------------------------------------------------
-typedef struct Outcome { 
-    DieVals dievals;
-    DieVals mask; // stores a pre-made mask for blitting this outcome onto a GameState.DieVals.data u16 later
-    f32 arrangements; // how many indistinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
-} Outcome;
-
-
-
-int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
-DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
-Range SELECTION_RANGES[32];  //new Range[32];  
-Outcome OUTCOMES[1683]; //new Outcome[1683]    
-u16 OUTCOME_DIEVALS_DATA[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
-u16 OUTCOME_MASK_DATA[1683]; // new u16[1683] 
-u16 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683] 
-const int pow_2_30 = 2<<30;
-// typedef struct ChoiceEV ev_cache[pow_2_30] ChoiceEV;// 2^30 slots hold all unique game states 
-
 
 // returns a range which corresponds the precomputed dice roll outcome data corresponding to the given selection
 Range outcome_range_for(Selection selection){
@@ -671,93 +597,86 @@ u8 score_slot_with_dice(Slot slot, DieVals sorted_dievals) {
 //GameState
 //-------------------------------------------------------------
 
-typedef struct GameState {
-    u32 id; // 30 bits # with the id, 
-    //we can store all of below in a sparse array using 2^(8+13+6+2+1) entries = 1_073_741_824 entries = 5.2GB when storing 40bit ResultEVs 
-    DieVals sorted_dievals;// 15 bits OR 8 bits once convereted to a DieValID (252 possibilities)
-    Slots open_slots;// 13 bits        = 8_192 possibilities
-    u8 upper_total;// = 6 bits         = 64    "
-    u8 rolls_remaining;// = 2 bits     = 4     "  
-    bool yahtzee_bonus_avail;// = 1bit = 2     "
-} GameState;
+GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
+                    u8 rolls_remaining, bool yahtzee_bonus_avail) { 
+    GameState self = (GameState){};
+    u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id;  // this is the 8-bit encoding of self.sorted_dievals
+    self.id =  (u32)dievals_id;                         // self.id will use 30 bits total...
+    self.id |= (u32)(open_slots)               << 7;   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
+    self.id |= (u32)(upper_total)              << 21;  // make room for 13+8 bit stuff above 
+    self.id |= (u32)(rolls_remaining)          << 27;  // make room for the 13+8+6 bit stuff above
+    self.id |= (u32)(yahtzee_bonus_avail?1:0)  << 29;  // make room for the 13+8+6+2 bit stuff above
+    self.sorted_dievals = sorted_dievals;
+    self.open_slots = open_slots;
+    self.upper_total = upper_total;
+    self.rolls_remaining = rolls_remaining;
+    self.yahtzee_bonus_avail = yahtzee_bonus_avail;
+    return self;
+} 
 
-    GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
-                        u8 rolls_remaining, bool yahtzee_bonus_avail) { 
-        GameState self = (GameState){};
-        u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id;  // this is the 8-bit encoding of self.sorted_dievals
-        self.id =  (u32)dievals_id;                         // self.id will use 30 bits total...
-        self.id |= (u32)(open_slots)               << 7;   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
-        self.id |= (u32)(upper_total)              << 21;  // make room for 13+8 bit stuff above 
-        self.id |= (u32)(rolls_remaining)          << 27;  // make room for the 13+8+6 bit stuff above
-        self.id |= (u32)(yahtzee_bonus_avail?1:0)  << 29;  // make room for the 13+8+6+2 bit stuff above
-        self.sorted_dievals = sorted_dievals;
-        self.open_slots = open_slots;
-        self.upper_total = upper_total;
-        self.rolls_remaining = rolls_remaining;
-        self.yahtzee_bonus_avail = yahtzee_bonus_avail;
-        return self;
-    } 
+// calculate relevant counts for gamestate: required lookups and saves
+u64 counts(GameState self) { 
+    u64 ticks = 0; 
+    Slots powerset[64]; int powerset_len = 0;
+    slots_powerset(self.open_slots, powerset, &powerset_len);
+    for(int i=0; i<powerset_len; i++) {
+        Slots slots = powerset[i];
+        bool joker_rules = slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
+        ints64 totals = useful_upper_totals(slots);
+        for(int j=0; j<totals.count; j++) {
+            for (int k=0; i<=joker_rules?1:0; k++){
+                int subset_len = slots_len(slots);
+                int slot_lookups = (subset_len * subset_len==1? 1 : 2) * 252 ;
+                ticks+=1; // this just counts the cost of one pass through the bar.tick call in the dice-choose section of build_cache() loop
+            }   
+        } 
+    }
+    return ticks;
+} 
 
-    // calculate relevant counts for gamestate: required lookups and saves
-    u64 counts(GameState self) { 
-        u64 ticks = 0; 
-        Slots powerset[64]; int powerset_len = 0;
-        slots_powerset(self.open_slots, powerset, &powerset_len);
-        for(int i=0; i<powerset_len; i++) {
-            Slots slots = powerset[i];
-            bool joker_rules = slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
-            ints64 totals = useful_upper_totals(slots);
-            for(int j=0; j<totals.count; j++) {
-                for (int k=0; i<=joker_rules?1:0; k++){
-                    int subset_len = slots_len(slots);
-                    int slot_lookups = (subset_len * subset_len==1? 1 : 2) * 252 ;
-                    ticks+=1; // this just counts the cost of one pass through the bar.tick call in the dice-choose section of build_cache() loop
-                }   
-            } 
-        }
-        return ticks;
-    } 
+u8 min_u8(u8 a, u8 b){return a<b?a:b;}
 
-    u8 min_u8(u8 a, u8 b){return a<b?a:b;}
+u8 score_first_slot_in_context(GameState self) { 
 
-    u8 score_first_slot_in_context(GameState self) { 
+    assert(self.open_slots!=0);
 
-        assert(self.open_slots!=0);
+    // score slot itself w/o regard to game state 
+        Slot slot = slots_get(self.open_slots,0); // first slot in open_slots
+        u8 score = score_slot_with_dice(slot, self.sorted_dievals) ;
 
-        // score slot itself w/o regard to game state 
-            Slot slot = slots_get(self.open_slots,0); // first slot in open_slots
-            u8 score = score_slot_with_dice(slot, self.sorted_dievals) ;
+    // add upper bonus when needed total is reached 
+        if (slot<=SIXES && self.upper_total<63){
+            u8 new_total = min_u8(self.upper_total+score, 63); 
+            if (new_total==63) { // we just reach bonus threshold
+                score += 35;   // add the 35 bonus points 
+            }
+        } 
 
-        // add upper bonus when needed total is reached 
-            if (slot<=SIXES && self.upper_total<63){
-                u8 new_total = min_u8(self.upper_total+score, 63); 
-                if (new_total==63) { // we just reach bonus threshold
-                    score += 35;   // add the 35 bonus points 
-                }
-            } 
+    // special handling of "joker rules" 
+        int just_rolled_yahtzee = score_yahtzee(self.sorted_dievals)==50;
+        bool joker_rules_in_play = (slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
+        if (just_rolled_yahtzee && joker_rules_in_play){ // standard scoring applies against the yahtzee dice except ... 
+            if (slot==FULL_HOUSE) {score=25;}
+            if (slot==SM_STRAIGHT){score=30;}
+            if (slot==LG_STRAIGHT){score=40;}
+        } 
 
-        // special handling of "joker rules" 
-            int just_rolled_yahtzee = score_yahtzee(self.sorted_dievals)==50;
-            bool joker_rules_in_play = (slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
-            if (just_rolled_yahtzee && joker_rules_in_play){ // standard scoring applies against the yahtzee dice except ... 
-                if (slot==FULL_HOUSE) {score=25;}
-                if (slot==SM_STRAIGHT){score=30;}
-                if (slot==LG_STRAIGHT){score=40;}
-            } 
+    // # special handling of "extra yahtzee" bonus per rules
+        if (just_rolled_yahtzee && self.yahtzee_bonus_avail) {score+=100;}
 
-        // # special handling of "extra yahtzee" bonus per rules
-            if (just_rolled_yahtzee && self.yahtzee_bonus_avail) {score+=100;}
-
-        return score;
-    } 
-
+    return score;
+} 
 
 
 //-------------------------------------------------------------
 // MAIN 
 //-------------------------------------------------------------
 
-// int main() {
+int main() {
 // commented out for now so we can build with main() living the test.c file that #includes this one
-// }
+    ChoiceEV* ev_cache = malloc(pow_2_30 * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 
+
+    run_tests();    
+
+}
 

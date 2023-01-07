@@ -5,10 +5,10 @@
             "label": "Build Main",
             "command": "/usr/bin/gcc",
             "args": [
-                "-fdiagnostics-color=always", "-g", "-o",
+                "-fdiagnostics-color=always", 
+                "-g", "-o",
                 "${workspaceFolder}/yahtcbot",
-                "${workspaceFolder}/yahtcbot.c",
-                // "${fileDirname}/ints.c",
+                "${workspaceFolder}/*.c",
               ],
             "options": { "cwd": "${fileDirname}" },
             "problemMatcher": [ "$gcc" ],

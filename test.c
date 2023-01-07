@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "yahtcbot.c" 
+#include "yahtcbot.h" 
 
 void test_powerset() {
     // Test input
@@ -34,72 +34,72 @@ void test_powerset() {
     }
 }
 
-void test_intbuf_new() {
-    // Test 1: Check that intbuf_new returns a non-NULL pointer
-    intbuf* buf = intbuf_new(10);
-    assert(buf != NULL);
-    intbuf_destroy(buf);
+// void test_intbuf_new() {
+//     // Test 1: Check that intbuf_new returns a non-NULL pointer
+//     intbuf* buf = intbuf_new(10);
+//     assert(buf != NULL);
+//     intbuf_destroy(buf);
 
-    // Test 2: Check that the capacity of the intbuf is set correctly
-    buf = intbuf_new(15);
-    assert(buf->_cap == 15);
-    intbuf_destroy(buf);
-}
+//     // Test 2: Check that the capacity of the intbuf is set correctly
+//     buf = intbuf_new(15);
+//     assert(buf->_cap == 15);
+//     intbuf_destroy(buf);
+// }
 
-void test_intbuf_recap() {
-    // Test 1: Check that intbuf_recap changes the capacity of the intbuf
-    intbuf* buf = intbuf_new(10);
-    buf = intbuf_recap(buf, 15);
-    assert(buf->_cap == 15);
-    intbuf_destroy(buf);
+// void test_intbuf_recap() {
+//     // Test 1: Check that intbuf_recap changes the capacity of the intbuf
+//     intbuf* buf = intbuf_new(10);
+//     buf = intbuf_recap(buf, 15);
+//     assert(buf->_cap == 15);
+//     intbuf_destroy(buf);
 
-    // Test 2: Check that intbuf_recap preserves the existing elements of the intbuf
-    int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    buf = intbuf_from_arr(arr, 10);
-    buf = intbuf_recap(buf, 20);
-    assert(buf->_cap == 20);
-    for (size_t i = 0; i < 10; i++) {
-        assert(intbuf_get(buf, i) == arr[i]);
-    }
-    intbuf_destroy(buf);
-}
+//     // Test 2: Check that intbuf_recap preserves the existing elements of the intbuf
+//     int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+//     buf = intbuf_from_arr(arr, 10);
+//     buf = intbuf_recap(buf, 20);
+//     assert(buf->_cap == 20);
+//     for (size_t i = 0; i < 10; i++) {
+//         assert(intbuf_get(buf, i) == arr[i]);
+//     }
+//     intbuf_destroy(buf);
+// }
 
-void test_intbuf_get() {
-    // Test 1: Check that intbuf_get returns the correct value
-    int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    intbuf* buf = intbuf_from_arr(arr, 10);
-    assert(intbuf_get(buf, 0) == 1);
-    assert(intbuf_get(buf, 9) == 10);
-    intbuf_destroy(buf);
+// void test_intbuf_get() {
+//     // Test 1: Check that intbuf_get returns the correct value
+//     int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+//     intbuf* buf = intbuf_from_arr(arr, 10);
+//     assert(intbuf_get(buf, 0) == 1);
+//     assert(intbuf_get(buf, 9) == 10);
+//     intbuf_destroy(buf);
 
-    // Test 2: Check that intbuf_get returns the correct value after changing the value of an element
-    buf = intbuf_from_arr(arr, 10);
-    intbuf_set(buf, 0, 100);
-    assert(intbuf_get(buf, 0) == 100);
-    intbuf_destroy(buf);
-}
+//     // Test 2: Check that intbuf_get returns the correct value after changing the value of an element
+//     buf = intbuf_from_arr(arr, 10);
+//     intbuf_set(buf, 0, 100);
+//     assert(intbuf_get(buf, 0) == 100);
+//     intbuf_destroy(buf);
+// }
 
-void test_intbuf_set() {
-    // Test 1: Check that intbuf_set changes the value of an element
-    int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    intbuf* buf = intbuf_from_arr(arr, 10);
-    intbuf_set(buf, 0, 100);
-    assert(intbuf_get(buf, 0) == 100);
-    intbuf_destroy(buf);
-}
+// void test_intbuf_set() {
+//     // Test 1: Check that intbuf_set changes the value of an element
+//     int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+//     intbuf* buf = intbuf_from_arr(arr, 10);
+//     intbuf_set(buf, 0, 100);
+//     assert(intbuf_get(buf, 0) == 100);
+//     intbuf_destroy(buf);
+// }
 
-void test_intbuf_from_arr() {
-    // Test 1: Check that intbuf_from_arr creates an intbuf with the correct capacity
-    int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    intbuf* buf = intbuf_from_arr(arr, 10);
-    assert(buf->_cap == 10);
+// void test_intbuf_from_arr() {
+//     // Test 1: Check that intbuf_from_arr creates an intbuf with the correct capacity
+//     int arr[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+//     intbuf* buf = intbuf_from_arr(arr, 10);
+//     assert(buf->_cap == 10);
 
-    // Test 2: Check that intbuf_from_arr initializes the elements of the intbuf correctly
-    for (size_t i = 0; i < 10; i++) {
-        assert(intbuf_get(buf, i) == arr[i]);
-    }
-    intbuf_destroy(buf);
-}
+//     // Test 2: Check that intbuf_from_arr initializes the elements of the intbuf correctly
+//     for (size_t i = 0; i < 10; i++) {
+//         assert(intbuf_get(buf, i) == arr[i]);
+//     }
+//     intbuf_destroy(buf);
+// }
 
 void test_n_take_r() {
     assert(n_take_r(5, 2, true, true) == 25);  // 5^2 permutations with replacement
@@ -369,15 +369,15 @@ void test_score_first_slot_in_context(){
 }
 
 
-int main() {
+void run_tests() {
 
     test_powerset();
 
-    test_intbuf_new();
-    test_intbuf_recap();
-    test_intbuf_get();
-    test_intbuf_set();
-    test_intbuf_from_arr();
+    // test_intbuf_new();
+    // test_intbuf_recap();
+    // test_intbuf_get();
+    // test_intbuf_set();
+    // test_intbuf_from_arr();
 
     test_n_take_r();
 
@@ -396,6 +396,5 @@ int main() {
     test_score_first_slot_in_context();
 
     printf("Tests PASSED\n");
-    return 0;
 }
 
