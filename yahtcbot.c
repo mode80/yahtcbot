@@ -10,46 +10,6 @@ Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 const int SENTINEL=INT_MIN;
 
-//-------------------------------------------------------------
-// INTBUF 
-//-------------------------------------------------------------
-
-// typedef struct intbuf{ 
-//     size_t _cap; 
-//     int _arr[]; 
-// } intbuf;
-
-// intbuf* intbuf_new(size_t cap) { 
-//     intbuf* result =  malloc( sizeof(intbuf) + cap*sizeof(int) ); 
-//     result->_cap = cap;
-//     return result;
-// }
-
-// void intbuf_destroy(intbuf* in) { free(in); }
-
-// intbuf* intbuf_recap(intbuf* in, size_t new_capacity) { 
-//     intbuf* recapped = realloc(in, sizeof(intbuf) + new_capacity * sizeof(int));
-//     recapped->_cap = new_capacity;
-//     return recapped;
-// }
-
-// int intbuf_get(intbuf* in, size_t i) { 
-//     assert(i < in->_cap);
-//     return in->_arr[i]; 
-// }
-
-// void intbuf_set(intbuf* in, size_t i, int val) { 
-//     assert(i < in->_cap);
-//     in->_arr[i] = val;; 
-// }
-
-// intbuf* intbuf_from_arr(int* vals, size_t cap) { 
-//     intbuf* result = intbuf_new(cap);
-//     result->_cap = cap;
-//     memcpy(result->_arr, vals, cap * sizeof(int));
-//     return result;
-// }
-
 
 //-------------------------------------------------------------
 //  UTILS
