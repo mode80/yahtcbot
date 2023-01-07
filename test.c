@@ -333,6 +333,20 @@ void test_score_slot_with_dice() {
     assert(score_slot_with_dice(CHANCE, dice) == 15);
 }
 
+void test_cache_roll_outcomes_data() { //TODO could be better
+
+    cache_roll_outcomes_data();
+
+    assert(sizeof(OUTCOMES) / sizeof(OUTCOMES[0]) == 1683);
+
+    // Cursory check the contents of OUTCOMES
+    for (int i = 0; i < 1683; i++) {
+        assert(OUTCOMES[i].dievals == OUTCOME_DIEVALS_DATA[i]);
+        assert(OUTCOMES[i].mask == OUTCOME_MASK_DATA[i]);
+    }
+}
+
+
 int main() {
 
     test_powerset();
@@ -354,7 +368,8 @@ int main() {
     test_cache_sorted_dievals();
     test_cache_selection_ranges();
     test_score_slot_with_dice();  
-    
+    test_cache_roll_outcomes_data();     
+
     printf("Tests PASSED\n");
     return 0;
 }

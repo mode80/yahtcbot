@@ -168,20 +168,20 @@ ints8* get_combos_with_replacement(ints8 items, int r, int* result_count) {
 }
 
 float distinct_arrangements_for(ints8 dieval_vec) {
-    u64 key_counts[dieval_vec.count+1];
-    memset(key_counts, 0, sizeof(key_counts));
+    u64 key_counts[7]={};
     for (int i = 0; i < dieval_vec.count; i++) { 
         int idx = dieval_vec.arr[i];
         key_counts[idx]++; 
     }
     int divisor = 1;
     int non_zero_dievals = 0;
-    for (int i = 0; i <= dieval_vec.count; i++) {
+    for (int i = 1; i <= 6; i++) {
         if (key_counts[i] != 0) {
             divisor *= factorial(key_counts[i]);
             non_zero_dievals += key_counts[i];
         }
     }
+    // free(key_counts);
     return (f32)(factorial(non_zero_dievals) / divisor);
 }
 
@@ -573,47 +573,47 @@ void cache_sorted_dievals() {
     }
 }
 
-/*
+
 //preps the caches of roll outcomes data for every possible 5-die selection, where '0' represents an unselected die """
 void cache_roll_outcomes_data() { 
 
-    int i=0; 
-    u8_32x5 idx_combos = powerset( (int[5]){0,1,2,3,4} );
+    int i=0; size_t idx_combo_count=0; 
+    ints8* idx_combos = powerset( (ints8){.count=5,.arr={0,1,2,3,4}}, &idx_combo_count );
+    assert(idx_combo_count==32); 
+    ints8 one_thru_six = {6, {1,2,3,4,5,6}}; 
 
-    for (int v=0; v<120; v++) { 
-        DieVal dievals_vec[5] = {0,0,0,0,0}; 
-        DieVal* idx_combo_vec = idx_combos.arr[v];
-        int die_count = 0; 
-        while (idx_combo_vec[die_count] != SENTINEL && die_count<5) { die_count += 1; }
+    for (int v=1; v<idx_combo_count; v++) { //start at 1 because the 0th is the empty set
+        DieVal dievals_arr[5] = {0,0,0,0,0}; 
+        ints8 idx_combo = idx_combos[v];
+        int die_count = idx_combo.count; 
         
-        int combos_size = 0;
-        int one_thru_six[6] = {1,2,3,4,5,6}; 
+        int die_combos_size = 0;
         // combos_with_rep(one_thru_six, 6, die_count, &result, &combos_size); 
-        int** result = get_combos_with_rep(one_thru_six, 6, die_count, &combos_size);
+        ints8* die_combos = get_combos_with_replacement(one_thru_six, die_count, &die_combos_size);
  
-        for (int w=0; w<combos_size; w++) {
-            int* dieval_combo_vec = result[w];
+        for (int w=0; w<die_combos_size; w++) {
+            ints8 die_combo = die_combos[w];
             u8 mask_vec[5] = {0b111,0b111,0b111,0b111,0b111};
             for(int j=0; j<die_count; j++) {
-                int idx = idx_combo_vec[j];
-                dievals_vec[idx] = (DieVal)dieval_combo_vec[j];
+                int idx = idx_combo.arr[j];
+                dievals_arr[idx] = (DieVal)die_combo.arr[j];
                 mask_vec[idx]=0;
             }
-            int arrangement_count = distinct_arrangements_for(dieval_combo_vec, die_count);
-            DieVals dievals = dievals_init(dievals_vec);
+            int arrangement_count = distinct_arrangements_for(die_combo);
+            DieVals dievals = dievals_init(dievals_arr);
             DieVals mask = dievals_init(mask_vec);
             OUTCOME_DIEVALS_DATA[i] = dievals;
             OUTCOME_MASK_DATA[i] = mask;
             OUTCOME_ARRANGEMENTS[i] = arrangement_count;
             OUTCOMES[i] = (Outcome){ dievals, mask, arrangement_count};
             i+=1;
-            // free(result[w]);
+            assert(i<=1683);
         } 
 
-        free(result);
+        free(die_combos);
     } 
+    free(idx_combos);
 } 
-*/
 
 /*
 
