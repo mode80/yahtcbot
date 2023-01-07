@@ -359,6 +359,26 @@ typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
         return previously_used_upper_slot_bits;
     } 
 
+    void slots_powerset(Slots self, Slots* out, int* out_len) { 
+        int len = slots_len(self);
+        int* powerset = zero_thru_63;
+        int powerset_len = 1 << len;
+        int powerset_index = 0;
+        for (int i=0; i<powerset_len; i++){ 
+            int j = i;
+            int k = 0;
+            Slots subset = slots_empty();
+            while (j > 0) { 
+                if (j & 1) { subset |= (0x0001 << slots_get(self, k)); }
+                j >>= 1;
+                k += 1;
+            } 
+            out[powerset_index] = subset;
+            powerset_index += 1;
+        } 
+        *out_len = powerset_len;
+    }
+
     u8 best_upper_total(Slots slots) {  
         u8 sum=0;
         for (int i=1; i<=6; i++) { 
@@ -426,89 +446,7 @@ typedef struct Outcome {
     f32 arrangements; // how many indistinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
 } Outcome;
 
-/*
 
-//-------------------------------------------------------------
-//GameState
-//-------------------------------------------------------------
-
-typedef struct GameState {
-    u32 id; // 30 bits # with the id, 
-    //we can store all of below in a sparse array using 2^(8+13+6+2+1) entries = 1_073_741_824 entries = 5.2GB when storing 40bit ResultEVs 
-    DieVals sorted_dievals;// 15 bits OR 8 bits once convereted to a DieValID (252 possibilities)
-    Slots open_slots;// 13 bits        = 8_192 possibilities
-    u8 upper_total;// = 6 bits         = 64    "
-    u8 rolls_remaining;// = 2 bits     = 4     "  
-    bool yahtzee_bonus_avail;// = 1bit = 2     "
-} GameState;
-
-    void gamestate_init(struct GameState self, DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
-                        u8 rolls_remaining, bool yahtzee_bonus_avail) { 
-        u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id; // this is the 8-bit encoding of self.sorted_dievals
-        self.id = u32(dievals_id)                  // self.id will use 30 bits total...
-        self.id |= ( u32(open_slots.data)        << 7)   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
-        self.id |= ( u32(upper_total)            << 21)  // make room for 13+8 bit stuff above 
-        self.id |= ( u32(rolls_remaining)        << 27)  // make room for the 13+8+6 bit stuff above
-        self.id |= ( u32(yahtzee_bonus_avail ? 1 : 0) << 29)   // make room for the 13+8+6+2 bit stuff above
-        self.sorted_dievals = sorted_dievals
-        self.open_slots = open_slots
-        self.upper_total = upper_total
-        self.rolls_remaining = rolls_remaining
-        self.yahtzee_bonus_avail = yahtzee_bonus_avail
-    } 
-
-    // calculate relevant counts for gamestate: required lookups and saves
-    func counts() -> Int { 
-        var ticks = 0 
-        let false_true = [true, false]
-        let just_false = [false]
-        for subset_len in 1...open_slots.count { //Range(1,open_slots.Count)){
-            let combos = open_slots.combinations(ofCount: subset_len)
-            for slots_vec in combos { 
-                let slots = Slots(slots_vec)
-                let joker_rules = slots.has(YAHTZEE) // yahtzees aren't wild whenever yahtzee slot is still available 
-                let totals = slots.useful_upper_totals() 
-                for _ in totals {
-                    for _ in joker_rules ? false_true : just_false {
-                        // var slot_lookups = (subset_len * subset_len==1? 1 : 2) * 252 // * subset_len as u64
-                        // var dice_lookups = 848484 // // previoiusly verified by counting up by 1s in the actual loop. however chunking forward is faster 
-                        // lookups += (dice_lookups + slot_lookups) this tends to overflow so use "normalized" ticks below
-                        ticks+=1 // this just counts the cost of one pass through the bar.tick call in the dice-choose section of build_cache() loop
-        } } } } 
-        return Int(ticks)
-    } 
-
-    public func score_first_slot_in_context() -> u8 { 
-
-        // score slot itself w/o regard to game state 
-            var it = open_slots.makeIterator()
-            let slot = it.next()! // first slot in open_slots
-            var score = Score.slot_with_dice(slot, sorted_dievals) 
-
-        // add upper bonus when needed total is reached 
-            if (slot<=SIXES && upper_total<63){
-                let new_total = min(upper_total+score, 63 ) 
-                if (new_total==63) { // we just reach bonus threshold
-                    score += 35   // add the 35 bonus points 
-                }
-            } 
-
-        // special handling of "joker rules" 
-            let just_rolled_yahtzee = Score.yahtzee(sorted_dievals)==50
-            let joker_rules_in_play = (slot != YAHTZEE) // joker rules in effect when the yahtzee slot is not open 
-            if (just_rolled_yahtzee && joker_rules_in_play){ // standard scoring applies against the yahtzee dice except ... 
-                if (slot==FULL_HOUSE) {score=25}
-                if (slot==SM_STRAIGHT){score=30}
-                if (slot==LG_STRAIGHT){score=40}
-            } 
-
-        // # special handling of "extra yahtzee" bonus per rules
-            if (just_rolled_yahtzee && yahtzee_bonus_avail) {score+=100}
-
-        return score
-    } 
-
-*/  
 
 int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
@@ -527,7 +465,6 @@ Range outcome_range_for(Selection selection){
     Range range = SELECTION_RANGES[idx]; 
     return range;
 } 
-
 
 
 //-------------------------------------------------------------
@@ -729,6 +666,91 @@ u8 score_slot_with_dice(Slot slot, DieVals sorted_dievals) {
     if (slot==YAHTZEE) {return score_yahtzee(sorted_dievals);}  
     assert(0);// shouldn't get here
 }
+
+//-------------------------------------------------------------
+//GameState
+//-------------------------------------------------------------
+
+typedef struct GameState {
+    u32 id; // 30 bits # with the id, 
+    //we can store all of below in a sparse array using 2^(8+13+6+2+1) entries = 1_073_741_824 entries = 5.2GB when storing 40bit ResultEVs 
+    DieVals sorted_dievals;// 15 bits OR 8 bits once convereted to a DieValID (252 possibilities)
+    Slots open_slots;// 13 bits        = 8_192 possibilities
+    u8 upper_total;// = 6 bits         = 64    "
+    u8 rolls_remaining;// = 2 bits     = 4     "  
+    bool yahtzee_bonus_avail;// = 1bit = 2     "
+} GameState;
+
+    GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
+                        u8 rolls_remaining, bool yahtzee_bonus_avail) { 
+        GameState self = (GameState){};
+        u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id;  // this is the 8-bit encoding of self.sorted_dievals
+        self.id =  (u32)dievals_id;                         // self.id will use 30 bits total...
+        self.id |= (u32)(open_slots)               << 7;   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
+        self.id |= (u32)(upper_total)              << 21;  // make room for 13+8 bit stuff above 
+        self.id |= (u32)(rolls_remaining)          << 27;  // make room for the 13+8+6 bit stuff above
+        self.id |= (u32)(yahtzee_bonus_avail?1:0)  << 29;  // make room for the 13+8+6+2 bit stuff above
+        self.sorted_dievals = sorted_dievals;
+        self.open_slots = open_slots;
+        self.upper_total = upper_total;
+        self.rolls_remaining = rolls_remaining;
+        self.yahtzee_bonus_avail = yahtzee_bonus_avail;
+        return self;
+    } 
+
+    // calculate relevant counts for gamestate: required lookups and saves
+    u64 counts(GameState self) { 
+        u64 ticks = 0; 
+        Slots powerset[64]; int powerset_len = 0;
+        slots_powerset(self.open_slots, powerset, &powerset_len);
+        for(int i=0; i<powerset_len; i++) {
+            Slots slots = powerset[i];
+            bool joker_rules = slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
+            ints64 totals = useful_upper_totals(slots);
+            for(int j=0; j<totals.count; j++) {
+                for (int k=0; i<=joker_rules?1:0; k++){
+                    int subset_len = slots_len(slots);
+                    int slot_lookups = (subset_len * subset_len==1? 1 : 2) * 252 ;
+                    ticks+=1; // this just counts the cost of one pass through the bar.tick call in the dice-choose section of build_cache() loop
+                }   
+            } 
+        }
+        return ticks;
+    } 
+
+    u8 min_u8(u8 a, u8 b){return a<b?a:b;}
+
+    u8 score_first_slot_in_context(GameState self) { 
+
+        assert(self.open_slots!=0);
+
+        // score slot itself w/o regard to game state 
+            Slot slot = slots_get(self.open_slots,0); // first slot in open_slots
+            u8 score = score_slot_with_dice(slot, self.sorted_dievals) ;
+
+        // add upper bonus when needed total is reached 
+            if (slot<=SIXES && self.upper_total<63){
+                u8 new_total = min_u8(self.upper_total+score, 63); 
+                if (new_total==63) { // we just reach bonus threshold
+                    score += 35;   // add the 35 bonus points 
+                }
+            } 
+
+        // special handling of "joker rules" 
+            int just_rolled_yahtzee = score_yahtzee(self.sorted_dievals)==50;
+            bool joker_rules_in_play = (slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
+            if (just_rolled_yahtzee && joker_rules_in_play){ // standard scoring applies against the yahtzee dice except ... 
+                if (slot==FULL_HOUSE) {score=25;}
+                if (slot==SM_STRAIGHT){score=30;}
+                if (slot==LG_STRAIGHT){score=40;}
+            } 
+
+        // # special handling of "extra yahtzee" bonus per rules
+            if (just_rolled_yahtzee && self.yahtzee_bonus_avail) {score+=100;}
+
+        return score;
+    } 
+
 
 
 //-------------------------------------------------------------

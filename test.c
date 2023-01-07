@@ -346,6 +346,28 @@ void test_cache_roll_outcomes_data() { //TODO could be better
     }
 }
 
+void test_slots_powerset() {
+    Slots slots = slots_init_va(3, 1, 2, 4);
+    Slots powerset[64];
+    int powerset_len;
+    slots_powerset(slots, powerset, &powerset_len);
+    // printf("Powerset of slots: \n");
+    for (int i = 0; i < powerset_len; i++) {
+        for(int j=0; j<slots_len(powerset[i]); j++){
+            // printf("%d ", slots_get(powerset[i],j));
+        }
+        // printf("\n");
+    }
+}
+
+void test_score_first_slot_in_context(){
+    DieVals dievals = dievals_from_5ints((int[5]){1, 1, 1, 2, 3});
+    Slots open_slots = slots_init_va(3, 1, 2, 4);
+    GameState game = gamestate_init(dievals, open_slots, 0, 3, false);
+    u8 score = score_first_slot_in_context(game);
+    assert(score == 3);
+}
+
 
 int main() {
 
@@ -369,6 +391,9 @@ int main() {
     test_cache_selection_ranges();
     test_score_slot_with_dice();  
     test_cache_roll_outcomes_data();     
+    test_slots_powerset();
+
+    test_score_first_slot_in_context();
 
     printf("Tests PASSED\n");
     return 0;
