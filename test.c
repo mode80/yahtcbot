@@ -6,9 +6,9 @@
 
 void test_powerset() {
     // Test input
-    ints8 items = {3, {1, 2, 3}};
+    Ints8 items = {3, {1, 2, 3}};
     size_t expected_result_count = 8;
-    ints8 expected_result[8] = {
+    Ints8 expected_result[8] = {
         {0, {}},
         {1, {1}},
         {1, {2}},
@@ -21,7 +21,7 @@ void test_powerset() {
 
     // Call the "powerset" function
     size_t result_count;
-    ints8* result = powerset(items, &result_count);
+    Ints8* result = powerset(items, &result_count);
 
     // Check the result
     assert (result_count == expected_result_count);
@@ -46,8 +46,8 @@ typedef struct ints8_6{ int arr[6]; } ints8_6;
 void test_get_combos_with_replacement() {
     int take_count = 2;
     int return_size;
-    ints8 items = {3, {1, 2, 3} };
-    ints8 (*combos)[6] = (ints8(*)[6])get_combos_with_replacement(items, 2, &return_size); //TODO understand this black magic
+    Ints8 items = {3, {1, 2, 3} };
+    Ints8 (*combos)[6] = (Ints8(*)[6])get_combos_with_replacement(items, 2, &return_size); //TODO understand this black magic
 
     // Check number of combinations
     assert(return_size == n_take_r(3,2,false,true));
@@ -55,7 +55,7 @@ void test_get_combos_with_replacement() {
     // Check that all combinations are present
     int expected_combinations[][2] = {{1, 1}, {1, 2}, {1, 3}, {2, 2}, {2, 3}, {3, 3}};
     for (int i = 0; i < return_size; i++) {
-        ints8 combo = (*combos)[i];
+        Ints8 combo = (*combos)[i];
         bool found = false;
         for (int j = 0; j < 6; j++) {
             if (memcmp(combo.arr, expected_combinations[j], sizeof(int)*take_count) == 0) {
@@ -71,19 +71,19 @@ void test_get_combos_with_replacement() {
 
 void test_distinct_arrangements_for() {
     // Test 1: Test with a list of unique values
-    ints8 dieval_vec1 = {5,{1, 2, 3, 4, 5}};
+    Ints8 dieval_vec1 = {5,{1, 2, 3, 4, 5}};
     float expected_result1 = 120.0;
     float result1 = distinct_arrangements_for(dieval_vec1);
     assert(result1 == expected_result1);
 
     // Test 2: Test with a list of all the same value
-    ints8 dieval_vec2 = {5,{1, 1, 1, 1, 1}};
+    Ints8 dieval_vec2 = {5,{1, 1, 1, 1, 1}};
     float expected_result2 = 1.0;
     float result2 = distinct_arrangements_for(dieval_vec2);
     assert(result2 == expected_result2);
 
     // Test 3: Test with a list of mixed values
-    ints8 dieval_vec3 = {4,{1, 2, 2, 3}};
+    Ints8 dieval_vec3 = {4,{1, 2, 2, 3}};
     float expected_result3 = 12.0;
     float result3 = distinct_arrangements_for(dieval_vec3);
     assert(result3 == expected_result3);
@@ -96,12 +96,12 @@ void test_dievals_functions() {
 
     // Test 2: Test dievals_init
     DieVal dievals1[5] = {1, 2, 3, 4, 5};
-    DieVals result1 = dievals_init(dievals1);
+    DieVals result1 = dievals_from_arr5((int*)dievals1);
     assert(result1 == ((1 << 0) | (2 << 3) | (3 << 6) | (4 << 9) | (5 << 12)));
 
     // Test 3: Test dievals_init_w_ints
     int dievals2[5] = {6, 5, 4, 3, 2};
-    DieVals result2 = dievals_from_5ints(dievals2);
+    DieVals result2 = dievals_from_arr5(dievals2);
     assert(result2 == ((6 << 0) | (5 << 3) | (4 << 6) | (3 << 9) | (2 << 12)));
 
     // Test 4: Test dievals_get
@@ -155,8 +155,8 @@ void test_slots_functions() {
 
     // Test 9: Test useful_upper_totals
     Slots used_upper_slots = ((1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6));
-    ints64 result3 = useful_upper_totals(used_upper_slots);
-    ints64 expected_output = {32,{0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62}};
+    Ints64 result3 = useful_upper_totals(used_upper_slots);
+    Ints64 expected_output = {32,{0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62}};
     for (int i = 0; i < 64; i++) {
         assert(result3.arr[i] == expected_output.arr[i]);
     }
@@ -164,23 +164,23 @@ void test_slots_functions() {
 
 void test_get_unique_perms() {
     // Test with an array of unique elements
-    ints8 items1 = { .arr = {1, 2, 3}, .count = 3 };
+    Ints8 items1 = { .arr = {1, 2, 3}, .count = 3 };
     int result_count1;
-    ints8 *result1 = get_unique_perms(items1, &result_count1);
+    Ints8 *result1 = get_unique_perms(items1, &result_count1);
     assert(result_count1 == 6);
     free(result1);
 
     // Test with an array containing duplicate elements
-    ints8 items2 = { .arr = {1, 2, 2}, .count = 3 };
+    Ints8 items2 = { .arr = {1, 2, 2}, .count = 3 };
     int result_count2;
-    ints8 *result2 = get_unique_perms(items2, &result_count2);
+    Ints8 *result2 = get_unique_perms(items2, &result_count2);
     assert(result_count2 == 3);
     free(result2);
 
     // Test with 4 elements and a dupe 
-    ints8 items = { .arr={1, 2, 2, 3}, .count=4 };
+    Ints8 items = { .arr={1, 2, 2, 3}, .count=4 };
     int result_count;
-    ints8* result = get_unique_perms(items, &result_count);
+    Ints8* result = get_unique_perms(items, &result_count);
     assert(result_count == 12); // 4! / (2! * 1!) =12 
     free(result);
 }
@@ -206,7 +206,7 @@ void test_cache_sorted_dievals() {
         assert(SORTED_DIEVALS[dieval_id.dievals].id == dieval_id.id);
 
         // Check that permutation dv_id.dievals is equal to i when i is treated as a DieVals and sorted
-        ints8 dv_ints_to_sort = { .count = 5 };
+        Ints8 dv_ints_to_sort = { .count = 5 };
         for (int j=0; j<5; j++){ dv_ints_to_sort.arr[j] = dievals_get(i, j); }        
         qsort(dv_ints_to_sort.arr, 5, sizeof(int), compare_ints);
         DieVal sorted_dievals = dievals_from_ints8(dv_ints_to_sort);
@@ -238,31 +238,31 @@ void test_cache_selection_ranges() {
 }
 
 void test_score_slot_with_dice() {
-    DieVals dice = dievals_from_5ints((int[5]){1, 1, 1, 1, 1});
+    DieVals dice = dievals_from_arr5((int[5]){1, 1, 1, 1, 1});
     assert(score_slot_with_dice(ACES, dice) == 5);
 
-    dice = dievals_from_5ints((int[5]){3, 4, 4, 4, 4});
+    dice = dievals_from_arr5((int[5]){3, 4, 4, 4, 4});
     assert(score_slot_with_dice(FOURS, dice) == 16);
 
-    dice = dievals_from_5ints((int[5]){2, 2, 2, 4, 4});
+    dice = dievals_from_arr5((int[5]){2, 2, 2, 4, 4});
     assert(score_slot_with_dice(THREE_OF_A_KIND, dice) == 14);
 
-    dice = dievals_from_5ints((int[5]){1, 1, 1, 1, 5});
+    dice = dievals_from_arr5((int[5]){1, 1, 1, 1, 5});
     assert(score_slot_with_dice(FOUR_OF_A_KIND, dice) == 9);
  
-    dice = dievals_from_5ints((int[5]){3, 3, 6, 6, 6});
+    dice = dievals_from_arr5((int[5]){3, 3, 6, 6, 6});
     assert(score_slot_with_dice(FULL_HOUSE, dice) == 25);
        
-    dice = dievals_from_5ints((int[5]){2, 3, 4, 5, 5});
+    dice = dievals_from_arr5((int[5]){2, 3, 4, 5, 5});
     assert(score_slot_with_dice(SM_STRAIGHT, dice) == 30);
 
-    dice = dievals_from_5ints((int[5]){1, 2, 3, 4, 5});
+    dice = dievals_from_arr5((int[5]){1, 2, 3, 4, 5});
     assert(score_slot_with_dice(LG_STRAIGHT, dice) == 40);
 
-    dice = dievals_from_5ints((int[5]){6, 6, 6, 6, 6});
+    dice = dievals_from_arr5((int[5]){6, 6, 6, 6, 6});
     assert(score_slot_with_dice(YAHTZEE, dice) == 50);
 
-    dice = dievals_from_5ints((int[5]){1, 2, 3, 4, 5});
+    dice = dievals_from_arr5((int[5]){1, 2, 3, 4, 5});
     assert(score_slot_with_dice(CHANCE, dice) == 15);
 }
 
@@ -280,7 +280,7 @@ void test_cache_roll_outcomes_data() { //TODO could be better
 }
 
 void test_slots_powerset() {
-    Slots slots = slots_init_va(3, 1, 2, 4);
+    Slots slots = slots_init_va(3, ACES, TWOS, FOURS);
     Slots powerset[64];
     int powerset_len;
     slots_powerset(slots, powerset, &powerset_len);
@@ -294,7 +294,7 @@ void test_slots_powerset() {
 }
 
 void test_score_first_slot_in_context(){
-    DieVals dievals = dievals_from_5ints((int[5]){1, 1, 1, 2, 3});
+    DieVals dievals = dievals_from_arr5((int[5]){1, 1, 1, 2, 3});
     Slots open_slots = slots_init_va(3, 1, 2, 4);
     GameState game = gamestate_init(dievals, open_slots, 0, 3, false);
     u8 score = score_first_slot_in_context(game);

@@ -22,11 +22,11 @@ typedef u8 Choice;
 typedef u8 DieVal;
 typedef u8 Slot;
 
-typedef struct { size_t count; int arr[8]; } ints8;
-typedef struct { size_t count; int arr[16]; } ints16;
-typedef struct { size_t count; int arr[32]; } ints32;
-typedef struct { size_t count; int arr[64]; } ints64;
-typedef struct { size_t count; int arr[128]; } ints128;
+typedef struct { size_t count; int arr[8]; } Ints8;
+typedef struct { size_t count; int arr[16]; } Ints16;
+typedef struct { size_t count; int arr[32]; } Ints32;
+typedef struct { size_t count; int arr[64]; } Ints64;
+typedef struct { size_t count; int arr[128]; } Ints128;
 
 
 const int SENTINEL; 
@@ -42,26 +42,17 @@ Slot THREE_OF_A_KIND; Slot FOUR_OF_A_KIND;
 Slot FULL_HOUSE; Slot SM_STRAIGHT; 
 Slot LG_STRAIGHT; Slot YAHTZEE; Slot CHANCE;
 
-//-------------------------------------------------------------
-//ChoiceEV
-//-------------------------------------------------------------
 typedef struct ChoiceEV {
     Choice choice;
     f32 ev;
 } ChoiceEV;
 
-//-------------------------------------------------------------
-//DieValsID
-//-------------------------------------------------------------
 typedef struct DieValsID {  
     DieVals dievals;
     u8 id;  // the id is a kind of offset that later helps us fast-index into the ev_cache 
             // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
 } DieValsID;
 
-//-------------------------------------------------------------
-// Outcome
-//-------------------------------------------------------------
 typedef struct Outcome { 
     DieVals dievals;
     DieVals mask; // stores a pre-made mask for blitting this outcome onto a GameState.DieVals.data u16 later
@@ -85,40 +76,39 @@ Outcome OUTCOMES[1683]; //new Outcome[1683]
 u16 OUTCOME_DIEVALS_DATA[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
 u16 OUTCOME_MASK_DATA[1683]; // new u16[1683] 
 u16 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683] 
-const size_t pow_2_30;
 ChoiceEV* ev_cache; //= malloc(pow_2_30 * sizeof(ChoiceEV); // 2^30 slots hold all unique game states 
 
 
 
-ints8 *powerset(const ints8 items, size_t *result_count);
+Ints8 *powerset(const Ints8 items, size_t *result_count);
 
 u64 factorial(u64 n);
 
 u64 n_take_r(u64 n, u64 r, bool order_matters, bool with_replacement);
 
-void make_combos_with_replacement(ints8 items, int n, int r, ints8 *indices, ints8 *results, int *result_count);
+void make_combos_with_replacement(Ints8 items, int n, int r, Ints8 *indices, Ints8 *results, int *result_count);
 
-ints8 *get_combos_with_replacement(ints8 items, int r, int *result_count);
+Ints8 *get_combos_with_replacement(Ints8 items, int r, int *result_count);
 
-float distinct_arrangements_for(ints8 dieval_vec);
+float distinct_arrangements_for(Ints8 dieval_vec);
 
 int countTrailingZeros(int x);
 
 void swap(int *a, int *b);
 
-void make_unique_perms(ints8 items, int start, ints8 *result, int *counter);
+void make_unique_perms(Ints8 items, int start, Ints8 *result, int *counter);
 
-ints8 *get_unique_perms(ints8 items, int *result_count);
+Ints8 *get_unique_perms(Ints8 items, int *result_count);
 
 void print_state_choices_header();
 
 DieVals dievals_empty();
 
-DieVals dievals_init(DieVal dievals[5]);
+DieVals dievals_init(int a, int b, int c, int d, int e);
+ 
+DieVals dievals_from_arr5(int dievals[5]);
 
-DieVals dievals_from_5ints(int dievals[5]);
-
-DieVals dievals_from_ints8(ints8 dievals);
+DieVals dievals_from_ints8(Ints8 dievals);
 
 DieVals dievals_from_intstar(int *dievals, int count);
 
@@ -142,7 +132,7 @@ void slots_powerset(Slots self, Slots *out, int *out_len);
 
 u8 best_upper_total(Slots slots);
 
-ints64 useful_upper_totals(Slots self);
+Ints64 useful_upper_totals(Slots self);
 
 void cache_selection_ranges();
 
