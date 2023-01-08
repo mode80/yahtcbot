@@ -94,9 +94,10 @@ void test_dievals_functions() {
     DieVals empty = dievals_empty();
     assert(empty == 0);
 
-    // Test 2: Test dievals_init
-    DieVal dievals1[5] = {1, 2, 3, 4, 5};
-    DieVals result1 = dievals_from_arr5((int*)dievals1);
+    // Test 2: Test dievals_from_intstar
+    int* dievals1 = malloc(5*sizeof(int));
+    memcpy(dievals1, (int[]){1, 2, 3, 4, 5}, sizeof(int)*5 );
+    DieVals result1 = dievals_from_intstar(dievals1,5);
     assert(result1 == ((1 << 0) | (2 << 3) | (3 << 6) | (4 << 9) | (5 << 12)));
 
     // Test 3: Test dievals_init_w_ints
@@ -274,8 +275,8 @@ void test_cache_roll_outcomes_data() { //TODO could be better
 
     // Cursory check the contents of OUTCOMES
     for (int i = 0; i < 1683; i++) {
-        assert(OUTCOMES[i].dievals == OUTCOME_DIEVALS_DATA[i]);
-        assert(OUTCOMES[i].mask == OUTCOME_MASK_DATA[i]);
+        assert(OUTCOMES[i].dievals == OUTCOME_DIEVALS[i]);
+        assert(OUTCOMES[i].mask == OUTCOME_MASKS[i]);
     }
 }
 

@@ -206,7 +206,9 @@ DieVals dievals_init(int a, int b, int c, int d, int e) {
 
 DieVals dievals_from_arr5(int dievals[5]) {
     u16 result = 0;
-    for (int i = 0; i < 5; i++){ result |= (dievals[i] << (i*3)); } 
+    for (int i = 0; i < 5; i++){ 
+        result |= (dievals[i] << (i*3)); 
+    } 
     return result;
 }
 
@@ -345,11 +347,10 @@ DieVal dievals_get(const DieVals self, int index) {
         // totals = (x for x in totals if x + best_unused_slot_total >=63 || x==0)
         // totals = from x in totals where (x + best_unused_slot_total >=63 || x==0) select x
         Ints64 result = {};
-        int j=0;
         for (int i=0; i<64; i++){ 
             if (totals[i]!=SENTINEL && totals[i] + best_unused_slot_total >= 63 || totals[i]==0) {
-                result.arr[j]=totals[i];
-                j++;
+                result.arr[result.count]=totals[i];
+                result.count++;
             }
         } 
         return result;  
@@ -422,7 +423,7 @@ void cache_roll_outcomes_data() {
     Ints8 one_thru_six = {6, {1,2,3,4,5,6}}; 
 
     for (int v=1; v<idx_combo_count; v++) { //start at 1 because the 0th is the empty set
-        DieVal dievals_arr[5] = {0,0,0,0,0}; 
+        int dievals_arr[5] = {0,0,0,0,0}; 
         Ints8 idx_combo = idx_combos[v];
         int die_count = idx_combo.count; 
         
@@ -432,17 +433,17 @@ void cache_roll_outcomes_data() {
  
         for (int w=0; w<die_combos_size; w++) {
             Ints8 die_combo = die_combos[w];
-            u8 mask_vec[5] = {0b111,0b111,0b111,0b111,0b111};
+            int mask_vec[5] = {0b111,0b111,0b111,0b111,0b111};
             for(int j=0; j<die_count; j++) {
                 int idx = idx_combo.arr[j];
                 dievals_arr[idx] = (DieVal)die_combo.arr[j];
                 mask_vec[idx]=0;
             }
             int arrangement_count = distinct_arrangements_for(die_combo);
-            DieVals dievals = dievals_from_arr5((int*)dievals_arr);
-            DieVals mask = dievals_from_arr5((int*)mask_vec);
-            OUTCOME_DIEVALS_DATA[i] = dievals;
-            OUTCOME_MASK_DATA[i] = mask;
+            DieVals dievals = dievals_from_arr5(dievals_arr);
+            DieVals mask = dievals_from_arr5(mask_vec);
+            OUTCOME_DIEVALS[i] = dievals;
+            OUTCOME_MASKS[i] = mask;
             OUTCOME_ARRANGEMENTS[i] = arrangement_count;
             OUTCOMES[i] = (Outcome){ dievals, mask, arrangement_count};
             i+=1;
@@ -835,8 +836,8 @@ f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 uppe
 
     // for i in range { //@inbounds @simd
     for (int i=range.start; i<range.stop; i++) { //SIMD ?
-        NEWVALS_DATA_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASK_DATA[i]);
-        NEWVALS_DATA_BUFFER[threadid][i] |= OUTCOME_DIEVALS_DATA[i];
+        NEWVALS_DATA_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASKS[i]);
+        NEWVALS_DATA_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i];
     } 
 
     GameState game = (GameState){
@@ -877,8 +878,8 @@ void init_caches(){
     f32** OUTCOME_EVS_BUFFER = malloc(CORES * sizeof(f32*));
     for (int i = 0; i < CORES; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
 
-    u16** NEWVALS_DATA_BUFFER = malloc(CORES * sizeof(u16*));
-    for (int i = 0; i < CORES; i++) { NEWVALS_DATA_BUFFER[i] = malloc(1683 * sizeof(u16)); }
+    DieVals** NEWVALS_BUFFER = malloc(CORES * sizeof(u16*));
+    for (int i = 0; i < CORES; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(u16)); }
 
     f32** EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(CORES * sizeof(f32*));
     for (int i = 0; i < CORES; i++) { EVS_TIMES_ARRANGEMENTS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
@@ -898,7 +899,6 @@ void init_caches(){
 //-------------------------------------------------------------
 
 int main() {
-// commented out for now so we can build with main() living the test.c file that #includes this one
     
     init_caches();
 

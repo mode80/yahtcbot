@@ -77,10 +77,10 @@ int RANGE_IDX_FOR_SELECTION[32];
 DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
 Range SELECTION_RANGES[32];  //new Range[32];  
 Outcome OUTCOMES[1683]; //new Outcome[1683]    
-u16 OUTCOME_DIEVALS_DATA[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
-u16 OUTCOME_MASK_DATA[1683]; // new u16[1683] 
-u16 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683] 
-ChoiceEV* EV_CACHE; //= malloc(pow_2_30 * sizeof(ChoiceEV); // 2^30 slots hold all unique game states 
+DieVals OUTCOME_DIEVALS[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
+DieVals OUTCOME_MASKS[1683]; // new u16[1683] 
+f32 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683]  //TODO test making this a u8 for cacheline efficiency
+ChoiceEV* EV_CACHE; // 2^30 slots hold all unique game states 
 
 
 
