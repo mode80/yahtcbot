@@ -134,11 +134,11 @@ void test_slots_functions() {
     assert(slots_has(test_val, 4) == false);
     assert(slots_has(test_val, 5) == true);
 
-    // Test 5: Test slots_len
-    assert(slots_len(test_val) == 3);
+    // Test 5: Test slots_count
+    assert(slots_count(test_val) == 3);
 
-    // Test 6: Test removing
-    Slots result2 = removing(test_val, 3);
+    // Test 6: Test slots_removing
+    Slots result2 = slots_removing(test_val, 3);
     assert(result2 == ((1 << 1) | (1 << 5)));
 
     // Test 7: Test used_upper_slots
@@ -286,7 +286,7 @@ void test_slots_powerset() {
     slots_powerset(slots, powerset, &powerset_len);
     // printf("Powerset of slots: \n");
     for (int i = 0; i < powerset_len; i++) {
-        for(int j=0; j<slots_len(powerset[i]); j++){
+        for(int j=0; j<slots_count(powerset[i]); j++){
             // printf("%d ", slots_get(powerset[i],j));
         }
         // printf("\n");

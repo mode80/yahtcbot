@@ -130,9 +130,9 @@ Slot slots_get(Slots self, int index);
 
 bool slots_has(Slots self, Slot slot);
 
-int slots_len(Slots self);
+int slots_count(Slots self);
 
-Slots removing(Slots self, Slot slot_to_remove);
+Slots slots_removing(Slots self, Slot slot_to_remove);
 
 Slots used_upper_slots(Slots self);
 
@@ -178,4 +178,10 @@ u64 counts(GameState self);
 
 u8 score_first_slot_in_context(GameState self);
 
-f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, u8 next_roll, bool yahtzee_bonus_available, usize threadid);  
+f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, u8 next_roll, bool yahtzee_bonus_available, usize threadid);
+
+void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
+    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total, DieVals placeholder_dievals);
+
+u64 powerset_of_size_n_count(int n);
+  
