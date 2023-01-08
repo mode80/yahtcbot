@@ -306,12 +306,6 @@ void run_tests() {
 
     test_powerset();
 
-    // test_intbuf_new();
-    // test_intbuf_recap();
-    // test_intbuf_get();
-    // test_intbuf_set();
-    // test_intbuf_from_arr();
-
     test_n_take_r();
 
     test_get_combos_with_replacement();

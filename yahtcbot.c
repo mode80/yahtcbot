@@ -10,14 +10,15 @@ Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 const int SENTINEL=INT_MIN;
 
-
 //-------------------------------------------------------------
 //  UTILS
 //-------------------------------------------------------------
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-// typedef struct { size_t count; Ints8 arr[32]; } ints8s;
+
+int min(int a, int b) { return a < b ? a : b; }
+int max(int a, int b) { return a > b ? a : b; }
 
 //powerset for a given set of elements
 Ints8* powerset(const Ints8 items, size_t* result_count) {
@@ -203,25 +204,19 @@ DieVals dievals_init(int a, int b, int c, int d, int e) {
 
 DieVals dievals_from_arr5(int dievals[5]) {
     u16 result = 0;
-    for (int i = 0; i < 5; i++){ 
-        result |= (dievals[i] << (i*3));
-    } 
+    for (int i = 0; i < 5; i++){ result |= (dievals[i] << (i*3)); } 
     return result;
 }
 
 DieVals dievals_from_ints8(Ints8 dievals) {
     u16 result = 0;
-    for (int i = 0; i < dievals.count; i++){ 
-        result |= (dievals.arr[i] << (i*3));
-    } 
+    for (int i = 0; i < dievals.count; i++){ result |= (dievals.arr[i] << (i*3)); } 
     return result;
 }
 
 DieVals dievals_from_intstar(int* dievals, int count) {
     u16 result = 0;
-    for (int i = 0; i < count; i++){ 
-        result |= (dievals[i] << (i*3));
-    } 
+    for (int i = 0; i < count; i++){ result |= (dievals[i] << (i*3)); } 
     return result;
 }
 
@@ -282,7 +277,7 @@ DieVal dievals_get(const DieVals self, int index) {
         return len; 
     } 
 
-    Slots removing(Slots self, Slot slot_to_remove) { 
+    Slots slots_removing(Slots self, Slot slot_to_remove) { 
         u16 mask = ~( 1 << slot_to_remove );
         return (self & mask); //# force off
     } 
@@ -291,10 +286,10 @@ DieVal dievals_get(const DieVals self, int index) {
             20,21,22,23,24,25,26,27,28,29, 30,31,32,33,34,35,36,37,38,39,
             40,41,42,43,44,45,46,47,48,49, 50,51,52,53,54,55,56,57,58,59, 60,61,62,63};
 
-    Slots used_upper_slots(Slots self) {
-        Slots all_bits_except_unused_uppers = ~self; // "unused" slots are not "previously used", so blank those out
+    Slots used_upper_slots(Slots unused_slots) {
+        Slots all_bits_except_unused = ~unused_slots; // "unused" slots are not "previously used", so blank those out
         Slots all_upper_slot_bits = (u16) ((1<<7)-2);  // upper slot bits are those from 2^1 through 2^6 (encoding doesn't use 2^0)
-        Slots previously_used_upper_slot_bits = (u16) (all_bits_except_unused_uppers & all_upper_slot_bits);
+        Slots previously_used_upper_slot_bits = (u16) (all_bits_except_unused & all_upper_slot_bits);
         return previously_used_upper_slot_bits;
     } 
 
@@ -328,9 +323,9 @@ DieVal dievals_get(const DieVals self, int index) {
 
     // a non-exact but fast estimate of relevant_upper_totals
     // ie the unique and relevant "upper bonus total" that could have occurred from the previously used upper slots
-    Ints64 useful_upper_totals(Slots self) { 
+    Ints64 useful_upper_totals(Slots unused_slots) { 
         int* totals = zero_thru_63;
-        Slots used_uppers = used_upper_slots(self);
+        Slots used_uppers = used_upper_slots(unused_slots);
         bool all_even = true;
         for (int i=1; i<=13; i++){ 
             Slot slot = slots_get(used_uppers, i);
@@ -344,7 +339,7 @@ DieVal dievals_get(const DieVals self, int index) {
 
         // filter out the lowish totals that aren't relevant because they can't reach the goal with the upper slots remaining 
         // this filters out a lot of dead state space but means the lookup function must later map extraneous deficits to a default 
-        int best_unused_slot_total = best_upper_total(self);
+        int best_unused_slot_total = best_upper_total(unused_slots);
         // totals = (x for x in totals if x + best_unused_slot_total >=63 || x==0)
         // totals = from x in totals where (x + best_unused_slot_total >=63 || x==0) select x
         Ints64 result = {};
@@ -436,8 +431,8 @@ void cache_roll_outcomes_data() {
                 mask_vec[idx]=0;
             }
             int arrangement_count = distinct_arrangements_for(die_combo);
-            DieVals dievals = dievals_from_arr5(dievals_arr);
-            DieVals mask = dievals_from_arr5(mask_vec);
+            DieVals dievals = dievals_from_arr5((int*)dievals_arr);
+            DieVals mask = dievals_from_arr5((int*)mask_vec);
             OUTCOME_DIEVALS_DATA[i] = dievals;
             OUTCOME_MASK_DATA[i] = mask;
             OUTCOME_ARRANGEMENTS[i] = arrangement_count;
@@ -456,13 +451,13 @@ void cache_roll_outcomes_data() {
 func init_bar_for(_ game :GameState) {
     bar = Tqdm(total:game.counts())
 } 
+*/
 
-func output(state :GameState, choice_ev :ChoiceEV ){ 
+void output(GameState state, ChoiceEV choice_ev){ 
     // Uncomment below for more verbose progress output at the expense of speed 
-    // print_state_choice(state, choice_ev)
+    // print_state_choice(state, choice_ev);
 } 
 
-*/
 
 //-------------------------------------------------------------
 //SCORING FNs
@@ -665,7 +660,7 @@ func build_cache(_ game :GameState) {
                     let state = GameState(outcome_combo, slot, upper_total, 0, yahtzee_bonus_available)
                     let score = state.score_first_slot_in_context()
                     let choice_ev = ChoiceEV(single_slot, f32(score))
-                    ev_cache[Int(state.id)] = choice_ev
+                    EV_CACHE[Int(state.id)] = choice_ev
                     output(state:state, choice_ev:choice_ev)
     } } } } 
 
@@ -704,147 +699,183 @@ func build_cache(_ game :GameState) {
     } } } } } }
 
 }
+*/
 
-func process_dieval_combo(_ rolls_remaining :u8, _ slots_len :Int, _ slots :Slots, _ dieval_combo :DieVals, _ joker_rules_in_play :Bool, 
-                        _ yahtzee_bonus_available :Bool, _ upper_total :u8, _ placeholder_dievals :DieVals) { 
+void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
+    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total, DieVals placeholder_dievals) { 
 
-    let threadid = 0 //TODO implement actual threading // threadid = Threads.threadid()
+    usize threadid = 0; //TODO implement actual threading // threadid = Threads.threadid()
 
-    if (rolls_remaining==0 && slots_len > 1) { // slot selection, but not leaf calcs already recorded
+    if (rolls_remaining==0 && slots_len > 1) { // slot selection, but not for already recorded leaf calcs  
 
         //= HANDLE SLOT SELECTION  =//
 
-        var slot_choice_ev=ChoiceEV(0,0)
+        ChoiceEV slot_choice_ev=(ChoiceEV){};
 
-        for slot in slots { 
+        // for slot in slots { 
+        for(int i=0; i<slots_len; i++) {   
+
+            Slot slot = slots_get(slots,i);
 
             // joker rules say extra yahtzees must be played in their matching upper slot if it's available
-            let first_dieval = dieval_combo[1]
-            let joker_rules_matter = (joker_rules_in_play && Score.yahtzee(dieval_combo)>0 && slots.has(first_dieval))
-            let head_slot = (joker_rules_matter ? first_dieval : slot)
+            DieVal first_dieval = dievals_get(dieval_combo,0);
+            bool joker_rules_matter = (joker_rules_in_play && score_yahtzee(dieval_combo)>0 && slots_has(slots,first_dieval));
+            Slot head_slot = (joker_rules_matter ? first_dieval : slot);
 
-            var yahtzee_bonus_avail_now = yahtzee_bonus_available
-            var upper_total_now = upper_total
-            var dievals_or_placeholder = dieval_combo
-            var head_plus_tail_ev:f32 = 0.0
-            var rolls_remaining_now:u8 = 0
+            bool yahtzee_bonus_avail_now = yahtzee_bonus_available;
+            u8 upper_total_now = upper_total;
+            DieVals dievals_or_placeholder = dieval_combo;
+            f32 head_plus_tail_ev = 0.0;
+            u8 rolls_remaining_now = 0;
 
             // find the collective ev for the all the slots with this iteration's slot being first 
             // do this by summing the ev for the first (head) slot with the ev value that we look up for the remaining (tail) slots
-            let passes = (slots_len==1 ? 1 : 2) // to do this, we need two passes unless there's only 1 slot left
-            for i in 1...passes {
-                let slots_piece = i==1 ? Slots([head_slot]) : slots.removing(head_slot)  // work on the head only or the set of slots without the head
-                let upper_total_to_save = (upper_total_now + slots_piece.best_upper_total() >= 63) ? upper_total_now : (u8)(0)  // only relevant totals are cached
-                let state_to_get = GameState(
+            int passes = (slots_len==1 ? 1 : 2); // to do this, we need two passes unless there's only 1 slot left
+            // for i in 1...passes {
+            for(int i=1; i<=passes; i++) {
+                Slots slots_piece = i==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on the head only or the set of slots without the head
+                u8 upper_total_to_save = (upper_total_now + best_upper_total(slots_piece) >= 63)? upper_total_now : 0;  // only relevant totals are cached
+                GameState state_to_get = (GameState){
                     dievals_or_placeholder,
                     slots_piece, 
                     upper_total_to_save,
                     rolls_remaining_now, 
                     yahtzee_bonus_avail_now
-                )
-                let choice_ev = ev_cache[Int(state_to_get.id)]
-                if (i==1 && slots_len > 1) {// prep 2nd pass on relevant 1st pass only..  
+                };
+                ChoiceEV choice_ev = EV_CACHE[state_to_get.id];
+                if (i==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
                     // going into tail slots next, we may need to adjust the state based on the head choice
                     if (choice_ev.choice <= SIXES){  // adjust upper total for the next pass 
-                        let added = u8(choice_ev.ev.truncatingRemainder(dividingBy: 100.0) ) // the modulo 100 here removes any yathzee bonus from ev since that doesnt' count toward upper bonus total
-                        upper_total_now = u8(min(63, upper_total_now + added))
+                        u8 added = fmod(choice_ev.ev , 100); // the modulo 100 here removes any yathzee bonus from ev since that doesnt' count toward upper bonus total
+                        u8 upper_total_now = min(63, upper_total_now + added);
                     } else if (choice_ev.choice==YAHTZEE) {  // adjust yahtzee related state for the next pass
-                        if (choice_ev.ev>0.0) {yahtzee_bonus_avail_now=true}
+                        if (choice_ev.ev>0.0) {yahtzee_bonus_avail_now=true;}
                     } 
-                    rolls_remaining_now=3 // for upcoming tail lookup, we always want the ev for 3 rolls remaining
-                    dievals_or_placeholder = placeholder_dievals // for 4 rolls remaining, use "wildcard" representative dievals since dice don't matter when rolling all of them
+                    int rolls_remaining_now=3; // for upcoming tail lookup, we always want the ev for 3 rolls remaining
+                    dievals_or_placeholder = placeholder_dievals; // for 4 rolls remaining, use "wildcard" representative dievals since dice don't matter when rolling all of them
                 }
-                head_plus_tail_ev += choice_ev.ev
+                head_plus_tail_ev += choice_ev.ev;
             }//for i in passes 
 
-            if head_plus_tail_ev >= slot_choice_ev.ev { 
-                slot_choice_ev = ChoiceEV(slot, head_plus_tail_ev)
+            if (head_plus_tail_ev >= slot_choice_ev.ev) { 
+                slot_choice_ev = (ChoiceEV){slot, head_plus_tail_ev};
             } 
             
-            if joker_rules_matter {break} // if joker-rules-matter we were forced to choose one slot, so we can skip trying the rest  
+            if (joker_rules_matter) break; // if joker-rules-matter we were forced to choose one slot, so we can skip trying the rest  
 
         }//for slot in slots                               
 
-        let state_to_set = GameState(
+        GameState state_to_set = (GameState){
             dieval_combo,
             slots,
             upper_total, 
-            0, 
+            .rolls_remaining=0, 
             yahtzee_bonus_available
-        ); 
-        ev_cache[Int(state_to_set.id)] = slot_choice_ev;
-        // output_state_choice(this, state_to_set, slot_choice_ev)
+        }; 
+        output(state_to_set, slot_choice_ev);
+        EV_CACHE[state_to_set.id] = slot_choice_ev;
 
     } else if (rolls_remaining > 0) {  
 
     //= HANDLE DICE SELECTION =//    
 
-        let next_roll = rolls_remaining-1
-        var best = ChoiceEV(0,0.0)//  selections are bitfields where '1' means roll and '0' means don't roll 
-        let selections = rolls_remaining==3 ? u8(0b11111)...u8(0b11111) : u8(0b00000)...u8(0b11111)//TODO test hoist? //select all dice on the initial roll, else try all selections
+        u8 next_roll = rolls_remaining-1;
+        ChoiceEV best = (ChoiceEV){0, 0.0};
+        Ints32 selections; 
+        if (rolls_remaining==3) {
+            selections = (Ints32){1,0b11111}; //  selections are bitfields where '1' means roll and '0' means don't roll 
+        } else {
+            selections.count=32;
+            for(int i=0b00000; i<=0b11111; i++) selections.arr[i]=i; 
+        }
         
-        for selection in selections { // we'll try each selection against this starting dice combo  
-            let avg_ev_for_selection = avg_ev(dieval_combo.data, selection, slots, upper_total, next_roll,yahtzee_bonus_available, ev_cache, threadid) // @inline
+        // for selection in selections { 
+        for(int i=0; i<selections.count; i++) {// we'll try each selection against this starting dice combo  
+            Selection selection = selections.arr[i];
+            f32 avg_ev_for_selection = avg_ev(dieval_combo, selection, slots, upper_total, next_roll,yahtzee_bonus_available, threadid); 
             if (avg_ev_for_selection > best.ev){
-                best = ChoiceEV(selection, avg_ev_for_selection)
+                best = (ChoiceEV){selection, avg_ev_for_selection};
             } 
         } 
-        let state_to_set = GameState(
+        GameState state_to_set = (GameState){
             dieval_combo,
             slots, 
             upper_total, 
             rolls_remaining, 
             yahtzee_bonus_available 
-        ) 
-        output(state:state_to_set, choice_ev:best);
-        ev_cache[Int(state_to_set.id)] = best;
+        }; 
+        output(state_to_set, best);
+        EV_CACHE[state_to_set.id] = best;
 
     }// if rolls_remaining...  
 }// process_dieval_combo
 
-f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, 
-            u8 next_roll, bool yahtzee_bonus_available, ChoiceEV ev_cache, int threadid) { 
+f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 upper_total, 
+            u8 next_roll, bool yahtzee_bonus_available, usize threadid) { 
 
     f32 total_ev_for_selection = 0.0 ;
     f32 outcomes_arrangements_count = 0.0;
     Range range = outcomes_range_for(selection);
 
-    for i in range { //@inbounds @simd
+    // for i in range { //@inbounds @simd
+    for (int i=range.start; i<range.stop; i++) { //SIMD ?
         NEWVALS_DATA_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASK_DATA[i]);
         NEWVALS_DATA_BUFFER[threadid][i] |= OUTCOME_DIEVALS_DATA[i];
     } 
 
-    let floor_state_id = GameState(
-        DieVals(),
+    GameState game = (GameState){
+        (DieVals)0,
         slots, 
         upper_total, 
         next_roll, // we'll average all the 'next roll' possibilities (which we'd calclated last) to get ev for 'this roll' 
         yahtzee_bonus_available 
-    ).id
+    };
+    usize floor_state_id = game.id ;
 
-    for i in range { //@inbounds @simd
+    for (usize i=range.start; i<range.stop; i++) { 
         //= gather sorted =#
-            let u = i
-            let newvals_datum = Int(NEWVALS_DATA_BUFFER[threadid][u])
-            let sorted_dievals_id  = SORTED_DIEVALS[newvals_datum].id 
+            usize u = i;
+            usize newvals_datum = NEWVALS_DATA_BUFFER[threadid][u];
+            usize sorted_dievals_id  = SORTED_DIEVALS[newvals_datum].id;
         //= gather ev =#
-            let state_to_get_id = Int(floor_state_id) | Int(sorted_dievals_id)
-            let cache_entry = ev_cache[state_to_get_id]
-            OUTCOME_EVS_BUFFER[threadid][u] = cache_entry.ev
+            usize state_to_get_id = floor_state_id | sorted_dievals_id;
+            ChoiceEV cache_entry = EV_CACHE[state_to_get_id];
+            OUTCOME_EVS_BUFFER[threadid][u] = cache_entry.ev;
     } 
 
-    for i in range { //@inbounds @simd
+    for (usize i=range.start; i<range.stop; i++) { 
     // foreach(int i in range) {// we looped through die "combos" but we need to average all "perumtations" // @fastmath @inbounds @simd ivdep 
-        EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i] = OUTCOME_EVS_BUFFER[threadid][i] * OUTCOME_ARRANGEMENTS[i]
-        total_ev_for_selection +=  EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i]
-        outcomes_arrangements_count += OUTCOME_ARRANGEMENTS[i] 
+        EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i] = OUTCOME_EVS_BUFFER[threadid][i] * OUTCOME_ARRANGEMENTS[i];
+        total_ev_for_selection +=  EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i];
+        outcomes_arrangements_count += OUTCOME_ARRANGEMENTS[i];
     } 
 
-    return  total_ev_for_selection / outcomes_arrangements_count;
+    return total_ev_for_selection / outcomes_arrangements_count;
 
 } // avg_ev
 
-*/ 
+void init_caches(){
+
+    CORES = 1; // default to 1 core
+
+    f32** OUTCOME_EVS_BUFFER = malloc(CORES * sizeof(f32*));
+    for (int i = 0; i < CORES; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
+
+    u16** NEWVALS_DATA_BUFFER = malloc(CORES * sizeof(u16*));
+    for (int i = 0; i < CORES; i++) { NEWVALS_DATA_BUFFER[i] = malloc(1683 * sizeof(u16)); }
+
+    f32** EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(CORES * sizeof(f32*));
+    for (int i = 0; i < CORES; i++) { EVS_TIMES_ARRANGEMENTS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
+
+    // setup helper values
+    cache_selection_ranges(); 
+    cache_sorted_dievals(); 
+    cache_roll_outcomes_data();
+
+    //gignormous cache for holding EVs of all game states
+    ChoiceEV* EV_CACHE = malloc(pow(2,30) * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 
+ 
+}
 
 //-------------------------------------------------------------
 // MAIN 
@@ -853,8 +884,7 @@ f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_to
 int main() {
 // commented out for now so we can build with main() living the test.c file that #includes this one
     
-    //alloc gignormous cache for holding EVs of all game states
-    ChoiceEV* ev_cache = malloc(pow(2,30) * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 
+    init_caches();
 
     //define a particular game state to test
     GameState game = (GameState) {
@@ -869,16 +899,11 @@ int main() {
     // setup progress bar 
     // init_bar_for(game);
 
-    // setup helper values
-    cache_selection_ranges(); 
-    cache_sorted_dievals(); 
-    cache_roll_outcomes_data();
-    
     // crunch crunch 
     // build_cache(game);
 
     // and the answer is...
-    printf("EV of test gamestate : %f", ev_cache[game.id].ev);
+    printf("EV of test gamestate : %f", EV_CACHE[game.id].ev);
 
     // run_tests();    
 

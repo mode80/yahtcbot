@@ -7,7 +7,7 @@
 #include <math.h> // pow, sqrt, 
 #include <stdarg.h> // pow, sqrt, 
 #include <limits.h> // INT_MIN
-// #include <pthread.h> // threads
+#include <pthread.h> // threads
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -31,7 +31,6 @@ typedef struct { size_t count; int arr[128]; } Ints128;
 
 const int SENTINEL; 
 typedef struct { int start; int stop; } Range;
-int cores;
 
 typedef u16 DieVals ; // 5 dievals, each from 0 to 6, can be encoded in 2 bytes total, each taking 3 bits{ 
 typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
@@ -49,7 +48,7 @@ typedef struct ChoiceEV {
 
 typedef struct DieValsID {  
     DieVals dievals;
-    u8 id;  // the id is a kind of offset that later helps us fast-index into the ev_cache 
+    u8 id;  // the id is a kind of offset that later helps us fast-index into the EV_CACHE 
             // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
 } DieValsID;
 
@@ -69,6 +68,11 @@ typedef struct GameState {
     bool yahtzee_bonus_avail;// = 1bit = 2     "
 } GameState;
 
+int CORES; 
+f32** OUTCOME_EVS_BUFFER;
+u16** NEWVALS_DATA_BUFFER ;
+f32** EVS_TIMES_ARRANGEMENTS_BUFFER ;
+
 int RANGE_IDX_FOR_SELECTION[32];
 DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
 Range SELECTION_RANGES[32];  //new Range[32];  
@@ -76,11 +80,11 @@ Outcome OUTCOMES[1683]; //new Outcome[1683]
 u16 OUTCOME_DIEVALS_DATA[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
 u16 OUTCOME_MASK_DATA[1683]; // new u16[1683] 
 u16 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683] 
-ChoiceEV* ev_cache; //= malloc(pow_2_30 * sizeof(ChoiceEV); // 2^30 slots hold all unique game states 
+ChoiceEV* EV_CACHE; //= malloc(pow_2_30 * sizeof(ChoiceEV); // 2^30 slots hold all unique game states 
 
 
 
-Ints8 *powerset(const Ints8 items, size_t *result_count);
+Ints8* powerset(const Ints8 items, size_t *result_count);
 
 u64 factorial(u64 n);
 
@@ -90,6 +94,10 @@ void make_combos_with_replacement(Ints8 items, int n, int r, Ints8 *indices, Int
 
 Ints8 *get_combos_with_replacement(Ints8 items, int r, int *result_count);
 
+int min(int a, int b);
+
+int max(int a, int b);
+
 float distinct_arrangements_for(Ints8 dieval_vec);
 
 int countTrailingZeros(int x);
@@ -98,7 +106,7 @@ void swap(int *a, int *b);
 
 void make_unique_perms(Ints8 items, int start, Ints8 *result, int *counter);
 
-Ints8 *get_unique_perms(Ints8 items, int *result_count);
+Ints8* get_unique_perms(Ints8 items, int *result_count);
 
 void print_state_choices_header();
 
@@ -169,3 +177,5 @@ GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_tota
 u64 counts(GameState self);
 
 u8 score_first_slot_in_context(GameState self);
+
+f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, u8 next_roll, bool yahtzee_bonus_available, usize threadid);  
