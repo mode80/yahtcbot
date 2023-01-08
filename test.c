@@ -215,6 +215,14 @@ void test_cache_sorted_dievals() {
 
         }
     }
+
+    // Check that cache is able to lookup the correct sorted dievals for a given DieVals
+    DieVals unsorted_dievals = dievals_from_arr5((int[5]){3, 2, 1, 5, 4});
+    DieVals expected_sorted = dievals_from_arr5((int[5]){1, 2, 3, 4, 5}); 
+
+    DieVals dievals_looked_up = SORTED_DIEVALS[unsorted_dievals].dievals;
+    bool is_same = (dievals_looked_up == expected_sorted);
+    assert(is_same);
 }
 
 void test_cache_selection_ranges() {

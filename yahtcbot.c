@@ -900,28 +900,28 @@ void init_caches(){
 
 int main() {
     
-    init_caches();
+    // init_caches();
 
-    //define a particular game state to test
-    GameState game = gamestate_init( 
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
-        // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
-        slots_from_ints16((Ints16){2,{6,12}}),
-        0,
-        3,
-        false
-    );
+    // //define a particular game state to test
+    // GameState game = gamestate_init( 
+    //     dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
+    //     // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
+    //     slots_from_ints16((Ints16){2,{6,12}}),
+    //     0,
+    //     3,
+    //     false
+    // );
 
-    // setup progress bar 
-    // init_bar_for(game);
+    // // setup progress bar 
+    // // init_bar_for(game);
 
-    // crunch crunch 
-    build_cache(game);
+    // // crunch crunch 
+    // build_cache(game);
 
-    // and the answer is...
-    printf("EV of test gamestate : %f", EV_CACHE[game.id].ev);
+    // // and the answer is...
+    // printf("EV of test gamestate : %f", EV_CACHE[game.id].ev);
 
-    // run_tests();    
+    run_tests();    
 
 }
 
