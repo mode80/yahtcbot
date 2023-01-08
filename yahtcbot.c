@@ -836,8 +836,8 @@ f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 uppe
 
     // for i in range { //@inbounds @simd
     for (int i=range.start; i<range.stop; i++) { //SIMD ?
-        NEWVALS_DATA_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASKS[i]);
-        NEWVALS_DATA_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i];
+        NEWVALS_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASKS[i]);
+        NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i];
     } 
 
     GameState game = (GameState){
@@ -852,7 +852,7 @@ f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 uppe
     for (usize i=range.start; i<range.stop; i++) { 
         //= gather sorted =#
             usize u = i;
-            usize newvals_datum = NEWVALS_DATA_BUFFER[threadid][u];
+            usize newvals_datum = NEWVALS_BUFFER[threadid][u];
             usize sorted_dievals_id  = SORTED_DIEVALS[newvals_datum].id;
         //= gather ev =#
             usize state_to_get_id = floor_state_id | sorted_dievals_id;
@@ -875,13 +875,13 @@ void init_caches(){
 
     CORES = 1; // default to 1 core
 
-    f32** OUTCOME_EVS_BUFFER = malloc(CORES * sizeof(f32*));
+    OUTCOME_EVS_BUFFER = malloc(CORES * sizeof(f32*));
     for (int i = 0; i < CORES; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
 
-    DieVals** NEWVALS_BUFFER = malloc(CORES * sizeof(u16*));
-    for (int i = 0; i < CORES; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(u16)); }
+    NEWVALS_BUFFER = malloc(CORES * sizeof(u16*));
+    for (int i = 0; i < CORES; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(DieVals)); }
 
-    f32** EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(CORES * sizeof(f32*));
+    EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(CORES * sizeof(f32*));
     for (int i = 0; i < CORES; i++) { EVS_TIMES_ARRANGEMENTS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
 
     // setup helper values
@@ -890,7 +890,7 @@ void init_caches(){
     cache_roll_outcomes_data();
 
     //gignormous cache for holding EVs of all game states
-    ChoiceEV* EV_CACHE = malloc(pow(2,30) * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 
+    EV_CACHE = malloc(pow(2,30) * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 
  
 }
 
@@ -900,28 +900,28 @@ void init_caches(){
 
 int main() {
     
-    // init_caches();
+    init_caches();
 
-    // //define a particular game state to test
-    // GameState game = gamestate_init( 
-    //     dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
-    //     // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
-    //     slots_from_ints16((Ints16){2,{6,12}}),
-    //     0,
-    //     3,
-    //     false
-    // );
+    //define a particular game state to test
+    GameState game = gamestate_init( 
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
+        // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
+        slots_from_ints16((Ints16){2,{6,12}}),
+        0,
+        3,
+        false
+    );
 
-    // // setup progress bar 
-    // // init_bar_for(game);
+    // setup progress bar 
+    // init_bar_for(game);
 
-    // // crunch crunch 
-    // build_cache(game);
+    // crunch crunch 
+    build_cache(game);
 
-    // // and the answer is...
-    // printf("EV of test gamestate : %f", EV_CACHE[game.id].ev);
+    // and the answer is...
+    printf("EV of test gamestate : %f", EV_CACHE[game.id].ev);
 
-    run_tests();    
+    // run_tests();    
 
 }
 
