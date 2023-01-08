@@ -6,3 +6,5 @@ halfbaked
 !.vscode/tasks.json
 test
 yahtcbot
+cmake-build-debug
+.idea

@@ -80,9 +80,12 @@ Outcome OUTCOMES[1683]; //new Outcome[1683]
 DieVals OUTCOME_DIEVALS[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
 DieVals OUTCOME_MASKS[1683]; // new u16[1683] 
 f32 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683]  //TODO test making this a u8 for cacheline efficiency
-ChoiceEV* EV_CACHE; // 2^30 slots hold all unique game states 
+ChoiceEV* EV_CACHE; // 2^30 slots hold all unique game state EVs
+//type (*fixed_array)[n]
 
-
+Ints32 SELECTION_SET_OF_ALL_DICE_ONLY; //  selections are bitfields where '1' means roll and '0' means don't roll 
+Ints32 SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS; // Ints32 type can hold 32 different selections 
+ 
 
 Ints8* powerset(const Ints8 items, size_t *result_count);
 
@@ -114,11 +117,11 @@ DieVals dievals_empty();
 
 DieVals dievals_init(int a, int b, int c, int d, int e);
  
-DieVals dievals_from_arr5(int dievals[5]);
+DieVals dievals_from_arr5(const int dievals[5]);
 
 DieVals dievals_from_ints8(Ints8 dievals);
 
-DieVals dievals_from_intstar(int *dievals, int count);
+DieVals dievals_from_intstar(const int *dievals, int count);
 
 DieVal dievals_get(const DieVals self, int index);
 
