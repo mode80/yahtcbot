@@ -748,13 +748,13 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
             for(int ii=1; ii<=passes; ii++) {
                 Slots slots_piece = ii==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on the head only or the set of slots without the head
                 u8 upper_total_to_save = (upper_total_now + best_upper_total(slots_piece) >= 63)? upper_total_now : 0;  // only relevant totals are cached
-                GameState state_to_get = (GameState){
+                GameState state_to_get = gamestate_init(
                     dievals_or_placeholder,
                     slots_piece, 
                     upper_total_to_save,
                     rolls_remaining_now, 
                     yahtzee_bonus_avail_now
-                };
+                );
                 ChoiceEV choice_ev = EV_CACHE[state_to_get.id];
                 if (i==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
                     // going into tail slots next, we may need to adjust the state based on the head choice
@@ -778,13 +778,13 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
 
         }//for slot in slots                               
 
-        GameState state_to_set = (GameState){
+        GameState state_to_set = gamestate_init(
             dieval_combo,
             slots,
             upper_total, 
-            .rolls_remaining=0, 
+            0, //rolls_remaining
             yahtzee_bonus_available
-        }; 
+        ); 
         output(state_to_set, slot_choice_ev);
         EV_CACHE[state_to_set.id] = slot_choice_ev;
 
@@ -804,13 +804,13 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
             } 
         } 
 
-        GameState state_to_set = (GameState){
+        GameState state_to_set = gamestate_init( 
             dieval_combo,
             slots, 
             upper_total, 
             rolls_remaining, 
             yahtzee_bonus_available 
-        }; 
+        ); 
         output(state_to_set, best);
         EV_CACHE[state_to_set.id] = best;
 
@@ -830,13 +830,13 @@ f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 uppe
         NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i];
     } 
 
-    GameState game = (GameState){
+    GameState game = gamestate_init(
         (DieVals)0,
         slots, 
         upper_total, 
         next_roll, // we'll average all the 'next roll' possibilities (which we'd calclated last) to get ev for 'this roll' 
         yahtzee_bonus_available 
-    };
+    );
     usize floor_state_id = game.id ;
 
     for (usize i=range.start; i<range.stop; i++) { 
