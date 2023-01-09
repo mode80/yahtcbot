@@ -81,6 +81,7 @@ void save_combo_to_results(Ints8 items, Ints8 *indices, int item_count, Ints8* r
 void make_combos_with_replacement(Ints8 items, int n, int r, Ints8 *indices, Ints8* results, int* result_count) {
     //helper function to _get_combos_with_replacement
     save_combo_to_results(items, indices, r, results, result_count);
+    if (r==0) return; // when supplied r is 0 there's just one emptyset result 
     while(true){
         int i =r;
         while (i > 0) {
@@ -102,7 +103,8 @@ Ints8* get_combos_with_replacement(Ints8 items, int r, int* result_count) {
     assert(r<=8);
     Ints8 indices = {r, {0,0,0,0,0,0,0,0} };
     int n = items.count;
-    Ints8* results = malloc(n_take_r(n,r,false,true) * sizeof(Ints8));
+    u64 result_capacity = n_take_r(n,r,false,true);
+    Ints8* results = malloc(result_capacity * sizeof(Ints8));
     *result_count=0;
     make_combos_with_replacement(items, n, r, &indices, results, result_count);
     return results;
@@ -377,7 +379,7 @@ void cache_selection_ranges() {
     Ints8* combos = powerset( idxs0to4, &result_count);
 
     for(int i=0; i<result_count; i++) {
-        int sets_count = n_take_r(6, combos[i].count, false, true) ;
+        int sets_count = n_take_r(6, combos[i].count, false, true); 
         SELECTION_RANGES[i] = (Range){s, s+sets_count}; 
         s += sets_count;
     } 
@@ -415,7 +417,7 @@ void cache_roll_outcomes_data() {
     assert(idx_combo_count==32); 
     Ints8 one_thru_six = {6, {1,2,3,4,5,6}}; 
 
-    for (int v=1; v<idx_combo_count; v++) { //start at 1 because the 0th is the empty set
+    for (int v=0; v<idx_combo_count; v++) { 
         int dievals_arr[5] = {0,0,0,0,0}; 
         Ints8 idx_combo = idx_combos[v];
         int die_count = idx_combo.count; 
@@ -448,8 +450,6 @@ void cache_roll_outcomes_data() {
     free(idx_combos);
 } 
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
 /*
 
 func init_bar_for(_ game :GameState) {
@@ -459,10 +459,44 @@ func init_bar_for(_ game :GameState) {
 
 void output(GameState state, ChoiceEV choice_ev){ 
     // Uncomment below for more verbose progress output at the expense of speed 
-    // print_state_choice(state, choice_ev);
+    print_state_choice(state, choice_ev);
 }
-#pragma clang diagnostic pop
 
+void print_state_choice(GameState state, ChoiceEV choice_ev) {
+    char Y[] = "Y"; char N[] = "N"; char S[] = "S"; char D[] = "D"; char C[] = ","; char U[] = "_";
+    char sb[60];
+    memset(sb, 0, sizeof(sb));
+    if (state.rolls_remaining == 0) {
+        strcat(sb, S); strcat(sb, C);
+        char temp[10];
+        snprintf(temp, sizeof(temp), "%d", choice_ev.choice); strcat(sb, temp);
+    } else {
+        strcat(sb, D); strcat(sb, C);
+        char temp[10];
+        snprintf(temp, sizeof(temp), "%05d", choice_ev.choice); strcat(sb, temp);
+    }
+    strcat(sb, C);
+    char temp[10];
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,4)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,3)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,2)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,1)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,0)); strcat(sb, temp); 
+    strcat(sb, C);
+    snprintf(temp, sizeof(temp), "%d", state.rolls_remaining); strcat(sb, temp); strcat(sb, C);
+    snprintf(temp, sizeof(temp), "%d", state.upper_total); strcat(sb, temp); strcat(sb, C);
+    if (state.yahtzee_bonus_avail) { 
+        strcat(sb, Y); 
+    } else { 
+        strcat(sb, N); 
+    } strcat(sb, C);
+    for (int i=0; i<slots_count(state.open_slots); i++){ 
+        snprintf(temp, sizeof(temp), "%d", slots_get(state.open_slots,i)); strcat(sb, temp); strcat(sb, U); 
+    }
+    strcat(sb, C);
+    snprintf(temp, sizeof(temp), "%.6f", choice_ev.ev); strcat(sb, temp);
+    puts(sb);
+}
 
 //-------------------------------------------------------------
 //SCORING FNs
@@ -597,7 +631,7 @@ u64 counts(GameState self) {
         bool joker_rules = slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
         Ints64 totals = useful_upper_totals(slots);
         for(int j=0; j<totals.count; j++) {
-            for (int k=0; k<=joker_rules?1:0; k++){
+            for (int k=0; k<=joker_rules; k++){
 //                int subset_len = slots_count(slots);
 //                int slot_lookups = (subset_len * subset_len==1? 1 : 2) * 252 ;
                 ticks+=1; // this just counts the cost of one pass through the bar.tick call in the dice-choose section of build_cache() loop
@@ -656,7 +690,7 @@ void build_ev_cache(GameState game) {
         Slot single_slot = slots_get(game.open_slots, i);
         Slots single_slot_set = slots_init_va(1,single_slot); // set of a single slot 
         bool joker_rules_in_play = (single_slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
-        for (int ii=0; ii<joker_rules_in_play?1:0; ii++){ // yahtzee bonus -might- be available when joker rules are in play 
+        for (int ii=0; ii<=joker_rules_in_play; ii++){ // yahtzee bonus -might- be available when joker rules are in play 
             bool yahtzee_bonus_available = (bool)ii;
             // for upper_total in slot.useful_upper_totals() {
             Ints64 upper_totals = useful_upper_totals(single_slot_set);
@@ -679,7 +713,7 @@ void build_ev_cache(GameState game) {
     for (int i=1; i<slotspowerset_count; i++){//skip empty set
         Slots slots = slotspowerset[i];
         int slots_len = slots_count(slots);
-        bool joker_rules_in_play = !slots_has(slots,YAHTZEE); // joker rules are in effect whenever the yahtzee slot is already filled 
+        bool joker_rules_in_play = !slots_has(slots,YAHTZEE); // joker rules might be in effect whenever the yahtzee slot is already filled 
 
         // for each upper total 
         Ints64 upper_totals = useful_upper_totals(slots); 
@@ -687,7 +721,7 @@ void build_ev_cache(GameState game) {
             u8 upper_total = upper_totals.arr[ii];
 
             // for each yahtzee bonus possibility 
-            for(int iii=0; iii<joker_rules_in_play?1:0; iii++){
+            for(int iii=0; iii<=joker_rules_in_play; iii++){
                 bool yahtzee_bonus_available = (bool)iii;
 
                 // bar.update() // advance the progress bar 
@@ -900,11 +934,12 @@ int main() {
 
     //define a particular game state to test
     GameState game = gamestate_init( 
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
+        dievals_from_arr5( (int[5]) {0,0,0,0,0} ),
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
         // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
-        slots_from_ints16((Ints16){1,{6}}),
+        slots_from_ints16((Ints16){2,{1,6}}),  // 12.64 per Swift
         0, // uppper total
-        1, // rolls remaining
+        3, // rolls remaining
         false
     );
 

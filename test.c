@@ -232,18 +232,18 @@ void test_cache_selection_ranges() {
     // Verify that the correct number of Range structures was generated
     assert(sizeof(SELECTION_RANGES) / sizeof(Range) == 32);
 
-    // Verify some rangges are is correct as per tested Julia implementation
+    // Verify some rangges are is correct as per Swift implementation 
     Range final_range = SELECTION_RANGES[31];
-    final_range.start=1431;
-    final_range.stop=1682;
+    assert(final_range.start==1431);
+    assert(final_range.stop==1683);
 
     Range first_range = SELECTION_RANGES[0];
-    first_range.start=0;
-    first_range.stop=0;
+    assert(first_range.start==0);
+    assert(first_range.stop==1);
     
-    Range second_range = SELECTION_RANGES[0];
-    second_range.start=1;
-    second_range.stop=6;
+    Range second_range = SELECTION_RANGES[1];
+    assert(second_range.start==1);
+    assert(second_range.stop==7);
 }
 
 void test_score_slot_with_dice() {
@@ -281,11 +281,26 @@ void test_cache_roll_outcomes_data() { //TODO could be better
 
     assert(sizeof(OUTCOMES) / sizeof(OUTCOMES[0]) == 1683);
 
-    // Cursory check the contents of OUTCOMES
+    // check that OUTCOMES are in sync with each oter
     for (int i = 0; i < 1683; i++) {
         assert(OUTCOMES[i].dievals == OUTCOME_DIEVALS[i]);
         assert(OUTCOMES[i].mask == OUTCOME_MASKS[i]);
+        assert(OUTCOMES[i].arrangements == OUTCOME_ARRANGEMENTS[i]);
     }
+
+    //compare to known good values from Swift implementation
+    assert(OUTCOMES[1682].dievals == dievals_from_arr5((int[5]){6,6,6,6,6}));
+    assert(OUTCOMES[1682].mask == dievals_from_arr5((int[5]){0,0,0,0,0}));
+    assert(OUTCOMES[1682].arrangements == 1); 
+
+    assert(OUTCOMES[0].dievals == dievals_from_arr5((int[5]){0,0,0,0,0}));
+    assert(OUTCOMES[0].mask == dievals_from_arr5((int[5]){7,7,7,7,7}));
+    assert(OUTCOMES[0].arrangements == 1); 
+
+    assert(OUTCOMES[1000].dievals == dievals_from_arr5((int[5]){1,1,0,1,4}));
+    assert(OUTCOMES[1000].mask == dievals_from_arr5((int[5]){0,0,7,0,0}));
+    assert(OUTCOMES[1000].arrangements == 4); 
+
 }
 
 void test_slots_powerset() {

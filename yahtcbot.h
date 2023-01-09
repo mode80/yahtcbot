@@ -187,4 +187,6 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
     bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total, DieVals placeholder_dievals);
 
 u64 powerset_of_size_n_count(int n);
+
+void print_state_choice(GameState state, ChoiceEV choice_ev);
   
