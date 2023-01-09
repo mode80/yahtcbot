@@ -17,6 +17,10 @@ Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
 int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 const int SENTINEL=INT_MIN;
+u64 tick_limit;
+u64 tick_interval;
+u64 ticks = 0;
+int progress_blocks;
 
 //-------------------------------------------------------------
 //  UTILS
@@ -450,16 +454,23 @@ void cache_roll_outcomes_data() {
     free(idx_combos);
 } 
 
-/*
-
-func init_bar_for(_ game :GameState) {
-    bar = Tqdm(total:game.counts())
+void init_bar_for(GameState game) {
+    tick_limit = counts(game);
+    tick_interval = (tick_limit) / 100;
 } 
-*/
+
+void tick(){
+    ticks++;
+    if (ticks % tick_interval == 0) {
+        printf("Progress: %d%%\r", (int)(ticks * 100 / tick_limit));
+        // printf("█");
+        fflush(stdout);
+    }
+}
 
 void output(GameState state, ChoiceEV choice_ev){ 
     // Uncomment below for more verbose progress output at the expense of speed 
-    print_state_choice(state, choice_ev);
+    // print_state_choice(state, choice_ev);
 }
 
 void print_state_choice(GameState state, ChoiceEV choice_ev) {
@@ -624,11 +635,11 @@ GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_tota
 // calculate relevant counts for gamestate: required lookups and saves
 u64 counts(GameState self) { 
     u64 ticks = 0; 
-    Slots powerset[64]; int powerset_len = 0;
+    Slots powerset[8192]; int powerset_len = 0;
     slots_powerset(self.open_slots, powerset, &powerset_len);
-    for(int i=0; i<powerset_len; i++) {
+    for(int i=1; i<powerset_len; i++) {
         Slots slots = powerset[i];
-        bool joker_rules = slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
+        bool joker_rules = !slots_has(slots,YAHTZEE); // yahtzees aren't wild whenever yahtzee slot is still available 
         Ints64 totals = useful_upper_totals(slots);
         for(int j=0; j<totals.count; j++) {
             for (int k=0; k<=joker_rules; k++){
@@ -724,7 +735,7 @@ void build_ev_cache(GameState game) {
             for(int iii=0; iii<=joker_rules_in_play; iii++){
                 bool yahtzee_bonus_available = (bool)iii;
 
-                // bar.update() // advance the progress bar 
+                tick(); // advance the progress bar 
 
                 // for each rolls remaining
                 for(int rolls_remaining=0; rolls_remaining<=3; rolls_remaining++){
@@ -790,7 +801,7 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
                     yahtzee_bonus_avail_now
                 );
                 ChoiceEV choice_ev = EV_CACHE[state_to_get.id];
-                if (i==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
+                if (ii==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
                     // going into tail slots next, we may need to adjust the state based on the head choice
                     if (choice_ev.choice <= SIXES){  // adjust upper total for the next pass 
                         u8 added = fmod(choice_ev.ev , 100); // the modulo 100 here removes any yahtzee bonus from ev since that doesnt' count toward upper bonus total
@@ -934,17 +945,12 @@ int main() {
 
     //define a particular game state to test
     GameState game = gamestate_init( 
-        dievals_from_arr5( (int[5]) {0,0,0,0,0} ),
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ),
-        // slots_init_va(13, 1,2,3,4,5,6,7,8,9,10,11,12,13),
-        slots_from_ints16((Ints16){2,{1,6}}),  // 12.64 per Swift
-        0, // uppper total
-        3, // rolls remaining
-        false
-    );
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{1}}), 0, 1, false //  0.8333 per Swift
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
+    );  
 
     // setup progress bar 
-    // init_bar_for(game);
+    init_bar_for(game);
 
     // crunch crunch 
     build_ev_cache(game);
