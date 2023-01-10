@@ -52,10 +52,10 @@ typedef struct DieValsID {
             // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
 } DieValsID;
 
-typedef struct Outcome { 
-    DieVals dievals;
-    DieVals mask; // stores a pre-made mask for blitting this outcome onto a GameState.DieVals.data u16 later
-    f32 arrangements; // how many indistinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
+typedef struct Outcome {  // an outcome represents one way a subset of 5 dievals could turn out after being rolled
+    DieVals dievals; // a set of 5 values where 0 means "unrolled" and other values are 1-6 representing the outcome of the roll
+    DieVals mask; // stores a corresponding mask handy for later blitting this outcome onto outer pre-rolled DieVals to get the post-roll state 
+    f32 arrangements; // how many distinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
 } Outcome;
 
 typedef struct GameState {
@@ -184,7 +184,7 @@ u8 score_first_slot_in_context(GameState self);
 f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, u8 next_roll, bool yahtzee_bonus_available, usize threadid);
 
 void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
-    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total, DieVals placeholder_dievals);
+    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total);
 
 u64 powerset_of_size_n_count(int n);
 

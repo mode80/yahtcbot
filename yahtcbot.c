@@ -128,7 +128,6 @@ float distinct_arrangements_for(Ints8 dieval_vec) {
             non_zero_dievals += key_counts[i];
         }
     }
-    // free(key_counts);
     return (f32)(factorial(non_zero_dievals) / divisor);
 }
 
@@ -341,7 +340,8 @@ DieVal dievals_get(const DieVals self, int index) {
     // a non-exact but fast estimate of relevant_upper_totals
     // ie the unique and relevant "upper bonus total" that could have occurred from the previously used upper slots
     Ints64 useful_upper_totals(Slots unused_slots) { 
-        int* totals = ZERO_THRU_63;
+        int totals[64]; 
+        memcpy(totals, ZERO_THRU_63, 64*sizeof(int)); // init to 0 thru 63
         Slots used_uppers = used_upper_slots(unused_slots);
         bool all_even = true;
         for (int i=1; i<=13; i++){ 
@@ -457,6 +457,8 @@ void cache_roll_outcomes_data() {
 void init_bar_for(GameState game) {
     tick_limit = counts(game);
     tick_interval = (tick_limit) / 100;
+    printf("Progress: %d%%\r", 0);
+    fflush(stdout);
 } 
 
 void tick(){
@@ -618,8 +620,8 @@ u8 score_slot_with_dice(Slot slot, DieVals sorted_dievals) {
 GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
                     u8 rolls_remaining, bool yahtzee_bonus_avail) { 
     GameState self = (GameState){};
-    u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id;  // this is the 8-bit encoding of self.sorted_dievals
-    self.id =  (u32)dievals_id;                         // self.id will use 30 bits total...
+    u8 dievals_id = SORTED_DIEVALS[sorted_dievals].id; // this is the 8-bit encoding of self.sorted_dievals
+    self.id =  (u32)dievals_id;                        // self.id will use 30 bits total...
     self.id |= (u32)(open_slots)               << 7;   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
     self.id |= (u32)(upper_total)              << 21;  // make room for 13+8 bit stuff above 
     self.id |= (u32)(rolls_remaining)          << 27;  // make room for the 13+8+6 bit stuff above
@@ -753,23 +755,23 @@ void build_ev_cache(GameState game) {
                             dieval_combo,
                             joker_rules_in_play,
                             yahtzee_bonus_available,
-                            upper_total,
-                            placeholder_dievals
+                            upper_total
                         );
     } } } } }
 
 }
 
 void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
-    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total, DieVals placeholder_dievals) { 
+    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total) { 
 
     usize threadid = 0; //TODO implement actual threading // threadid = Threads.threadid()
 
     if (rolls_remaining==0 && slots_len > 1) { // slot selection, but not for already recorded leaf calcs  
+                                               // TODO the slots_len > 1 check should be handeled further up right after slots_len is calculated
 
         //= HANDLE SLOT SELECTION  =//
 
-        ChoiceEV slot_choice_ev=(ChoiceEV){};
+        ChoiceEV best=(ChoiceEV){0,0};
 
         // for slot in slots { 
         for(int i=0; i<slots_len; i++) {   
@@ -789,19 +791,19 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
 
             // find the collective ev for the all the slots with this iteration's slot being first 
             // do this by summing the ev for the first (head) slot with the ev value that we look up for the remaining (tail) slots
-            int passes = (slots_len==1 ? 1 : 2); // to do this, we need two passes unless there's only 1 slot left
+            int passes = (slots_len==1 ? 1 : 2); // to do this, we need two passes unless there's only 1 slot left //TODO slots_len is ALWAYS > 1 here!
             for(int ii=1; ii<=passes; ii++) {
-                Slots slots_piece = ii==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on the head only or the set of slots without the head
-                u8 upper_total_to_save = (upper_total_now + best_upper_total(slots_piece) >= 63)? upper_total_now : 0;  // only relevant totals are cached
+                Slots slots_piece = ii==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on the head only, or the set of slots without the head
+                u8 relevant_upper_total = (upper_total_now + best_upper_total(slots_piece) >= 63)? upper_total_now : 0;  // only relevant totals are cached
                 GameState state_to_get = gamestate_init(
                     dievals_or_placeholder,
                     slots_piece, 
-                    upper_total_to_save,
+                    relevant_upper_total,
                     rolls_remaining_now, 
                     yahtzee_bonus_avail_now
                 );
                 ChoiceEV choice_ev = EV_CACHE[state_to_get.id];
-                if (ii==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
+                if (ii==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  //TODO don't need slots_len>1 check here
                     // going into tail slots next, we may need to adjust the state based on the head choice
                     if (choice_ev.choice <= SIXES){  // adjust upper total for the next pass 
                         u8 added = fmod(choice_ev.ev , 100); // the modulo 100 here removes any yahtzee bonus from ev since that doesnt' count toward upper bonus total
@@ -810,13 +812,13 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
                         if (choice_ev.ev>0.0) {yahtzee_bonus_avail_now=true;}
                     } 
                     rolls_remaining_now=3; // for upcoming tail lookup, we always want the ev for 3 rolls remaining
-                    dievals_or_placeholder = placeholder_dievals; // for 4 rolls remaining, use "wildcard" representative dievals since dice don't matter when rolling all of them
+                    dievals_or_placeholder = (DieVals)0; // for 3 rolls remaining, use "wildcard" representative dievals since dice don't matter when rolling all of them
                 }
                 head_plus_tail_ev += choice_ev.ev;
             }//for i in passes 
 
-            if (head_plus_tail_ev >= slot_choice_ev.ev) { 
-                slot_choice_ev = (ChoiceEV){slot, head_plus_tail_ev};
+            if (head_plus_tail_ev >= best.ev) { 
+                best = (ChoiceEV){slot, head_plus_tail_ev};
             } 
             
             if (joker_rules_matter) break; // if joker-rules-matter we were forced to choose one slot, so we can skip trying the rest  
@@ -830,18 +832,21 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
             0, //rolls_remaining
             yahtzee_bonus_available
         ); 
-        output(state_to_set, slot_choice_ev);
-        EV_CACHE[state_to_set.id] = slot_choice_ev;
+        output(state_to_set, best);
+        EV_CACHE[state_to_set.id] = best;
 
     } else if (rolls_remaining > 0) {  
-
+        
     //= HANDLE DICE SELECTION =//    
 
         u8 next_roll = rolls_remaining-1;
         ChoiceEV best = (ChoiceEV){0, 0.0};
         Ints32 selections = (rolls_remaining==3)? SELECTION_SET_OF_ALL_DICE_ONLY : SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS;
         
-        for(int i=0; i<selections.count; i++) {// we'll try each selection against this starting dice combo  
+        // HOT LOOP !
+        // for each possible selection of dice from this starting dice combo, 
+        // we calculate the expected value of rolling that selection, then store the best selection along with its EV 
+        for(int i=0; i<selections.count; i++) {
             Selection selection = selections.arr[i];
             f32 avg_ev_for_selection = avg_ev(dieval_combo, selection, slots, upper_total, next_roll,yahtzee_bonus_available, threadid); 
             if (avg_ev_for_selection > best.ev){
@@ -862,29 +867,34 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
     }// if rolls_remaining...  
 }// process_dieval_combo
 
-f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 upper_total, 
+
+// calculates the average EV for a dice selection from a starting dice combo 
+// within the context of the other relevant gamestate variables
+f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_total, 
             u8 next_roll, bool yahtzee_bonus_available, usize threadid) { 
 
     f32 total_ev_for_selection = 0.0 ;
     f32 outcomes_arrangements_count = 0.0;
     Range range = outcomes_range_for(selection);
 
-    // for i in range { //@inbounds @simd
-    for (int i=range.start; i<range.stop; i++) { //SIMD ?
-        NEWVALS_BUFFER[threadid][i] = (start_dievals_data & OUTCOME_MASKS[i]);
-        NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i];
-    } 
-
     GameState game = gamestate_init(
         (DieVals)0,
         slots, 
         upper_total, 
-        next_roll, // we'll average all the 'next roll' possibilities (which we'd calclated last) to get ev for 'this roll' 
+        next_roll, // we'll average all the 'next roll' possibilities (which we'd calclated on the last pass) to get ev for 'this roll' 
         yahtzee_bonus_available 
     );
-    usize floor_state_id = game.id ;
+    usize floor_state_id = game.id ; 
+    // from this floor gamestate we can blend in a dievals_id to quickly calc the index we need to access the ev for the complete state 
 
-    for (usize i=range.start; i<range.stop; i++) { 
+    // blit all each roll outcome for the given dice selection onto the unrolled start_dievals 
+    // and stash results in the NEWVALS_BUFFER 
+    for (int i=range.start; i<range.stop; i++) { // we can SIMD this loop but not the next one 
+        NEWVALS_BUFFER[threadid][i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
+        NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
+    } 
+
+    for (usize i=range.start; i<range.stop; i++) { // this loop is a bunch of lookups so doesn't benefit from SIMD
         //= gather sorted =#
             usize newvals_datum = NEWVALS_BUFFER[threadid][i];
             usize sorted_dievals_id  = SORTED_DIEVALS[newvals_datum].id;
@@ -894,14 +904,16 @@ f32 avg_ev(DieVals start_dievals_data, Selection selection, Slots slots, u8 uppe
             OUTCOME_EVS_BUFFER[threadid][i] = cache_entry.ev;
     } 
 
-    for (usize i=range.start; i<range.stop; i++) { 
-    // foreach(int i in range) {// we looped through die "combos" but we need to average all "perumtations" // @fastmath @inbounds @simd ivdep 
+    for (usize i=range.start; i<range.stop; i++) { // this loop is all math so eligble for SIMD optimization
+        // we have EVs for each "combination" but we need the average all "permutations" 
+        // -- so we mutliply by the number of distinct arrangements for each combo 
         EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i] = OUTCOME_EVS_BUFFER[threadid][i] * OUTCOME_ARRANGEMENTS[i];
         total_ev_for_selection +=  EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i];
         outcomes_arrangements_count += OUTCOME_ARRANGEMENTS[i];
     } 
 
-    return total_ev_for_selection / outcomes_arrangements_count;
+    // this final step gives us the average EV for all permutations of rolled dice 
+    return total_ev_for_selection / outcomes_arrangements_count; 
 
 } // avg_ev
 
@@ -946,7 +958,21 @@ int main() {
     //define a particular game state to test
     GameState game = gamestate_init( 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{1}}), 0, 1, false //  0.8333 per Swift
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
+        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6,}}), 0, 3, false// 
+
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){4,{1,2,3,4}}), 0, 2, false//  Julia 27.0865 == GOT 27.0865 
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){2,{5,6}}), 0, 2, false //  Julia 28.0668 == GOT 28.0668
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false //  Julia 38.9117 == GOT 38.9117 
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){4,{3,4,5,6}}), 0, 2, false//  Julia 49.4368 == GOT 49.4368 
+        // dievals_from_arr5( (int[5]) {1,1,1,1,2} ), slots_from_ints16((Ints16){2,{3,4}}), 36, 1, false//  Julia 12.28 == GOT 12.28 
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){7,{7,8,9,10,11,12,13}}), 0, 2, false//  Julia 141.109 == GOT 141.1090 
+ 
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6}}), 0, 2, false// 72.435 per Julia !=  GOT 69.7463
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
+
+        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // should be 254.5896 got 238.06 :(  
     );  
 
     // setup progress bar 
@@ -956,9 +982,10 @@ int main() {
     build_ev_cache(game);
 
     // and the answer is...
-    printf("EV of test gamestate : %.2f\n", EV_CACHE[game.id].ev);
+    printf("EV of test gamestate : %.4f\n", EV_CACHE[game.id].ev);
 
     // run_tests();    
 
 }
 
+// D,00031,21111,1,36,N,3_4_,

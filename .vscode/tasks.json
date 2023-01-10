@@ -2,26 +2,27 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "Build Main",
+            "label": "Build Release",
             "command": "/usr/bin/gcc",
             "args": [
                 "-fdiagnostics-color=always", 
-                "-g", "-o",
+                "-O3",
+                "-o",
                 "${workspaceFolder}/yahtcbot",
-                "${workspaceFolder}/*.c",
+                "${workspaceFolder}/yahtcbot.c",
               ],
             "options": { "cwd": "${fileDirname}" },
             "problemMatcher": [ "$gcc" ],
-            "group": { "kind": "build", "isDefault": true }
+            "group": { "kind": "build", "isDefault": false}
         } ,
         {
             "type": "cppbuild",
-            "label": "Build Tests",
+            "label": "Build Debug",
             "command": "/usr/bin/gcc",
-            "args": ["-g", "-o", "${workspaceFolder}/test", "${workspaceFolder}/test.c"],
+            "args": ["-g", "-o", "${workspaceFolder}/yahtcbot", "${workspaceFolder}/*.c"],
             "options": { "cwd": "${fileDirname}" },
             "problemMatcher": [ "$gcc" ],
-            "group": { "kind": "build", "isDefault":false }
+            "group": { "kind": "build", "isDefault":true}
         }
     ],
     "version": "2.0.0"
