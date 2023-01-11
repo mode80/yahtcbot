@@ -1,11 +1,3 @@
-//#pragma clang diagnostic push
-//#pragma ide diagnostic ignored "bugprone-integer-division"
-//#pragma ide diagnostic ignored "UnusedValue"
-//#pragma ide diagnostic ignored "DanglingPointer"
-//#pragma ide diagnostic ignored "OCUnusedMacroInspection"
-//#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
-//#pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
-
 #include "yahtcbot.h"
 void run_tests();  // forward declare unit test runner found in test.c
 
@@ -421,7 +413,7 @@ void cache_roll_outcomes_data() {
             OUTCOME_DIEVALS[i] = dievals;
             OUTCOME_MASKS[i] = mask;
             OUTCOME_ARRANGEMENTS[i] = arrangement_count;
-            OUTCOMES[i] = (Outcome){ dievals, mask, arrangement_count};
+            OUTCOMES[i] = (Outcome){ dievals, mask, arrangement_count}; //TODO remove this
             i+=1;
             assert(i<=1683);
         } 
@@ -864,9 +856,9 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     usize floor_state_id = game.id ; 
     // from this floor gamestate we can blend in a dievals_id to quickly calc the index we need to access the ev for the complete state 
 
-    // blit all each roll outcome for the given dice selection onto the unrolled start_dievals 
-    // and stash results in the NEWVALS_BUFFER 
-    for (int i=range.start; i<range.stop; i++) { // we can SIMD this loop but not the next one 
+    // blit all each roll outcome for the given dice selection onto the unrolled start_dievals and stash results in the NEWVALS_BUFFER 
+    #pragma GCC ivdepi // one tries
+    for (int i=range.start; i<range.stop; i++) { // we should be able to SIMD this loop but not the next one 
         NEWVALS_BUFFER[threadid][i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
         NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
     } 
@@ -881,7 +873,8 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
             OUTCOME_EVS_BUFFER[threadid][i] = cache_entry.ev;
     } 
 
-    for (usize i=range.start; i<range.stop; i++) { // this loop is all math so eligble for SIMD optimization
+    #pragma GCC ivdepi // no help with auto SIMD in GCC AFAICT
+    for (usize i=range.start; i<range.stop; i++) { // this loop is all math so should be eligble for SIMD optimization
         // we have EVs for each "combination" but we need the average all "permutations" 
         // -- so we mutliply by the number of distinct arrangements for each combo 
         EVS_TIMES_ARRANGEMENTS_BUFFER[threadid][i] = OUTCOME_EVS_BUFFER[threadid][i] * OUTCOME_ARRANGEMENTS[i];
@@ -935,24 +928,9 @@ int main() {
     GameState game = gamestate_init( 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{1}}), 0, 1, false //  0.8333 per Swift
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
-        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6,}}), 0, 3, false// 
-
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){4,{1,2,3,4}}), 0, 2, false//  Julia 27.0865 == GOT 27.0865 
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){2,{5,6}}), 0, 2, false //  Julia 28.0668 == GOT 28.0668
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false //  Julia 38.9117 == GOT 38.9117 
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){4,{3,4,5,6}}), 0, 2, false//  Julia 49.4368 == GOT 49.4368 
-        // dievals_from_arr5( (int[5]) {1,1,1,1,2} ), slots_from_ints16((Ints16){2,{3,4}}), 36, 1, false//  Julia 12.28 == GOT 12.28 
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){7,{7,8,9,10,11,12,13}}), 0, 2, false//  Julia 141.109 == GOT 141.1090 
-
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{2,3,4,5,6}}), 0, 2, false// 61.1906 Julia !=  GOT 61.1906 
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
- 
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6}}), 0, 2, false// 72.435 per Julia !=  GOT 69.7463
-        dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // should be 254.5896 got 238.06 :(  
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
+        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
     );  
-
-
 
     // setup progress bar 
     init_bar_for(game);
@@ -966,5 +944,3 @@ int main() {
     // run_tests();    
 
 }
-
-// D,00031,21111,1,36,N,3_4_,

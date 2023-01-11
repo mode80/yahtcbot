@@ -5,7 +5,8 @@
             "label": "Build Release",
             "command": "/usr/bin/gcc",
             "args": [
-                "-fdiagnostics-color=always", 
+                // "-fdiagnostics-color=always", 
+                // "-ftree-vectorize", //no help seemingly
                 "-O3",
                 "-o",
                 "${workspaceFolder}/yahtcbot",
