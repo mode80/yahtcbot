@@ -183,30 +183,6 @@ void print_state_choices_header() {
     printf("choice_type,choice,dice,rolls_remaining,upper_total,yahtzee_bonus_avail,open_slots,expected_value");
 } 
 
-// // should produce one line of output kinda like ...
-// // D,01111,65411,2,31,Y,1_3_4_6_7_8_11_,119.23471
-// // S,13,66641,0,11,Y,3_4_5_9_10_13_,113.45208
-// func print_state_choice(_ state :GameState , _ choice_ev: ChoiceEV ) { 
-//     let Y="Y"; let N="N"; let S="S"; let D="D"; let C=","; // TODO hoist these to constants
-//     var sb:String=""; sb.reserveCapacity(60)
-//     if (state.rolls_remaining==0){ // for slot choice 
-//         sb += (S); sb+=(C);
-//         sb += (choice_ev.choice.description); // for dice choice 
-//     } else {
-//         sb+=(D); sb+=(C);
-//         sb+=("00000"+choice_ev.choice.description).suffix(5)
-//     }
-//     sb+=(C);
-//     sb+=(state.sorted_dievals.description); sb+=(C);
-//     sb+=(state.rolls_remaining.description); sb+=(C);
-//     sb+=(state.upper_total.description); sb+=(C);
-//     sb+=(state.yahtzee_bonus_avail ? Y : N); sb+=(C);
-//     sb+=(state.open_slots.description); sb+=(C);
-//     sb+=(choice_ev.ev.description);
-//     // sb+=(C); sb+=(state.id.description);
-//     print(sb);
-// } 
-
 //#=-------------------------------------------------------------
 //DieVals
 //-------------------------------------------------------------=#
@@ -344,7 +320,8 @@ DieVal dievals_get(const DieVals self, int index) {
         memcpy(totals, ZERO_THRU_63, 64*sizeof(int)); // init to 0 thru 63
         Slots used_uppers = used_upper_slots(unused_slots);
         bool all_even = true;
-        for (int i=1; i<=13; i++){ 
+        int count = slots_count(used_uppers);
+        for (int i=0; i<count; i++){ 
             Slot slot = slots_get(used_uppers, i);
             if (slot % 2 == 1) {all_even = false; break;} 
         }
@@ -365,7 +342,7 @@ DieVal dievals_get(const DieVals self, int index) {
                 result.arr[result.count]=totals[i];
                 result.count++;
             }
-        } 
+        }
         return result;  
     }
 
@@ -507,7 +484,7 @@ void print_state_choice(GameState state, ChoiceEV choice_ev) {
         snprintf(temp, sizeof(temp), "%d", slots_get(state.open_slots,i)); strcat(sb, temp); strcat(sb, U); 
     }
     strcat(sb, C);
-    snprintf(temp, sizeof(temp), "%.6f", choice_ev.ev); strcat(sb, temp);
+    snprintf(temp, sizeof(temp), "%.2f", choice_ev.ev); strcat(sb, temp);
     puts(sb);
 }
 
@@ -954,7 +931,6 @@ void init_caches(){
 int main() {
     
     init_caches();
-
     //define a particular game state to test
     GameState game = gamestate_init( 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{1}}), 0, 1, false //  0.8333 per Swift
@@ -968,12 +944,15 @@ int main() {
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){4,{3,4,5,6}}), 0, 2, false//  Julia 49.4368 == GOT 49.4368 
         // dievals_from_arr5( (int[5]) {1,1,1,1,2} ), slots_from_ints16((Ints16){2,{3,4}}), 36, 1, false//  Julia 12.28 == GOT 12.28 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){7,{7,8,9,10,11,12,13}}), 0, 2, false//  Julia 141.109 == GOT 141.1090 
+
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{2,3,4,5,6}}), 0, 2, false// 61.1906 Julia !=  GOT 61.1906 
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
  
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6}}), 0, 2, false// 72.435 per Julia !=  GOT 69.7463
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
-
         // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // should be 254.5896 got 238.06 :(  
     );  
+
+
 
     // setup progress bar 
     init_bar_for(game);

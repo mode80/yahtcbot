@@ -161,6 +161,12 @@ void test_slots_functions() {
     for (int i = 0; i < 64; i++) {
         assert(result3.arr[i] == expected_output.arr[i]);
     }
+    Slots used_upper_slots2 = ((1 << 3) | (1 << 4) | (1 << 5));
+    Ints64 result4 = useful_upper_totals(used_upper_slots2);
+    Ints64 expected_output2 = {62, {0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63}};
+    for (int i = 0; i < 64; i++) {
+        assert(result4.arr[i] == expected_output2.arr[i]);
+    }
 }
 
 void test_get_unique_perms() {
