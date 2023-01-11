@@ -3,26 +3,24 @@
         {
             "type": "cppbuild",
             "label": "Build Release",
-            "command": "/usr/bin/gcc",
+            "command": "clang",
             "args": [
-                // "-fdiagnostics-color=always", 
-                // "-ftree-vectorize", //no help seemingly
                 "-O3",
                 "-o",
                 "${workspaceFolder}/yahtcbot",
                 "${workspaceFolder}/yahtcbot.c",
               ],
             "options": { "cwd": "${fileDirname}" },
-            "problemMatcher": [ "$gcc" ],
+            // "problemMatcher": [ "$gcc" ],
             "group": { "kind": "build", "isDefault": true}
         } ,
         {
             "type": "cppbuild",
             "label": "Build Debug",
-            "command": "/usr/bin/gcc",
+            "command": "clang",
             "args": ["-g", "-o", "${workspaceFolder}/yahtcbot", "${workspaceFolder}/*.c"],
             "options": { "cwd": "${fileDirname}" },
-            "problemMatcher": [ "$gcc" ],
+            // "problemMatcher": [ "$gcc" ],
             "group": { "kind": "build", "isDefault":false}
         }
     ],

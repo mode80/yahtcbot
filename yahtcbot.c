@@ -857,8 +857,9 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     // from this floor gamestate we can blend in a dievals_id to quickly calc the index we need to access the ev for the complete state 
 
     // blit all each roll outcome for the given dice selection onto the unrolled start_dievals and stash results in the NEWVALS_BUFFER 
-    #pragma GCC ivdepi // one tries
-    for (int i=range.start; i<range.stop; i++) { // we should be able to SIMD this loop but not the next one 
+    #pragma GCC ivdepi // one tries. no help with auto SIMD in GCC AFAICT
+    #pragma clang loop vectorize(enable) // clang does does appear to auto-SIMD this loop
+    for (int i=range.start; i<range.stop; i++) { 
         NEWVALS_BUFFER[threadid][i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
         NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
     } 
@@ -873,7 +874,8 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
             OUTCOME_EVS_BUFFER[threadid][i] = cache_entry.ev;
     } 
 
-    #pragma GCC ivdepi // no help with auto SIMD in GCC AFAICT
+    #pragma GCC ivdepi 
+    #pragma clang loop vectorize(enable)
     for (usize i=range.start; i<range.stop; i++) { // this loop is all math so should be eligble for SIMD optimization
         // we have EVs for each "combination" but we need the average all "permutations" 
         // -- so we mutliply by the number of distinct arrangements for each combo 
