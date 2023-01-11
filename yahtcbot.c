@@ -946,10 +946,10 @@ int main() {
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){7,{7,8,9,10,11,12,13}}), 0, 2, false//  Julia 141.109 == GOT 141.1090 
 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{2,3,4,5,6}}), 0, 2, false// 61.1906 Julia !=  GOT 61.1906 
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){5,{1,2,3,4,5}}), 0, 2, false// 41.2435 Julia !=  GOT 40.8427
  
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){6,{1,2,3,4,5,6}}), 0, 2, false// 72.435 per Julia !=  GOT 69.7463
-        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // should be 254.5896 got 238.06 :(  
+        dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // should be 254.5896 got 238.06 :(  
     );  
 
 

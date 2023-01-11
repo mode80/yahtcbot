@@ -13,7 +13,7 @@
               ],
             "options": { "cwd": "${fileDirname}" },
             "problemMatcher": [ "$gcc" ],
-            "group": { "kind": "build", "isDefault": false}
+            "group": { "kind": "build", "isDefault": true}
         } ,
         {
             "type": "cppbuild",
@@ -22,7 +22,7 @@
             "args": ["-g", "-o", "${workspaceFolder}/yahtcbot", "${workspaceFolder}/*.c"],
             "options": { "cwd": "${fileDirname}" },
             "problemMatcher": [ "$gcc" ],
-            "group": { "kind": "build", "isDefault":true}
+            "group": { "kind": "build", "isDefault":false}
         }
     ],
     "version": "2.0.0"
