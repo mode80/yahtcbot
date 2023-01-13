@@ -14,7 +14,7 @@ u64 tick_interval;
 u64 ticks = 0;
 int progress_blocks;
 
-const int NUM_THREADS = 4; 
+const int NUM_THREADS = 8; 
 
 //-------------------------------------------------------------
 //  UTILS
@@ -715,7 +715,7 @@ void build_ev_cache(GameState apex_state) {
             u8 upper_total = upper_totals.arr[ii];
 
             // for each yahtzee bonus possibility 
-            for(int iii=0; iii<=joker_rules_in_play; iii++){
+            for(int iii=0; iii<=joker_rules_in_play; iii++){ //TODO push this down inside the thread for better thread utilization
                 bool yahtzee_bonus_available = (bool)iii;
 
                 tick(); // advance the progress bar 
@@ -989,8 +989,8 @@ int main() {
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{9}}), 0, 2, false //  
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){2,{7,8}}), 0, 2, false// 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
-        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
-        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
+        dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
     );  
 
     // setup progress bar 
