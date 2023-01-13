@@ -8,3 +8,6 @@ test
 yahtcbot
 cmake-build-debug
 .idea
+*.s
+*.i
+*.o

@@ -4,10 +4,11 @@
 #include <stdlib.h> // rand, srand, malloc, free
 #include <assert.h> // assert 
 #include <string.h> //strcmp, strlen, etc
-#include <math.h> // pow, sqrt, 
 #include <stdarg.h> // pow, sqrt, 
 #include <limits.h> // INT_MIN
 #include <pthread.h> // threads
+#include <math.h> // pow, sqrt, 
+// #include <hwloc.h> // cores count 
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -68,7 +69,8 @@ typedef struct GameState {
     bool yahtzee_bonus_avail;// = 1bit = 2     "
 } GameState;
 
-int CORES; 
+typedef struct ProcessChunkArgs { GameState state; Range range; int threadid; } ProcessChunkArgs;
+
 f32** OUTCOME_EVS_BUFFER;
 DieVals** NEWVALS_BUFFER ;
 f32** EVS_TIMES_ARRANGEMENTS_BUFFER ;
@@ -183,10 +185,11 @@ u8 score_first_slot_in_context(GameState self);
 
 f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_total, u8 next_roll, bool yahtzee_bonus_available, usize threadid);
 
-void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
-    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total);
+void* process_chunk(void* args);
 
+void process_state(GameState state, int threadid) ;
+ 
 u64 powerset_of_size_n_count(int n);
 
-void print_state_choice(GameState state, ChoiceEV choice_ev);
+void print_state_choice(GameState state, ChoiceEV choice_ev, int threadid);
   

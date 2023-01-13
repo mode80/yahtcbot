@@ -55,7 +55,11 @@
         "complex": "c"
     },
     "lldb.displayFormat": "auto",
-    "lldb.showDisassembly": "never",
+    "lldb.showDisassembly": "auto",
     "lldb.dereferencePointers": true,
-    "lldb.consoleMode": "evaluate"
+    "lldb.consoleMode": "evaluate",
+    "disasexpl.associations": {
+        "**/*.c": "${fileDirname}/${fileBasenameNoExtension}.s",
+    },
+    // "disasexpl.useBinaryParsing": true
 }

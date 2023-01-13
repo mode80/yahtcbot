@@ -14,6 +14,8 @@ u64 tick_interval;
 u64 ticks = 0;
 int progress_blocks;
 
+const int NUM_THREADS = 4; 
+
 //-------------------------------------------------------------
 //  UTILS
 //-------------------------------------------------------------
@@ -439,44 +441,52 @@ void tick(){
     }
 }
 
-void output(GameState state, ChoiceEV choice_ev){ 
+void output(GameState s, ChoiceEV choice_ev, int threadid){ 
     // Uncomment below for more verbose progress output at the expense of speed 
-    // print_state_choice(state, choice_ev);
+    // print_state_choice(s, choice_ev,threadid);
 }
 
-void print_state_choice(GameState state, ChoiceEV choice_ev) {
+void print_state_choice(GameState state, ChoiceEV choice_ev, int threadid) {
+    //prep
     char Y[] = "Y"; char N[] = "N"; char S[] = "S"; char D[] = "D"; char C[] = ","; char U[] = "_";
     char sb[60];
     memset(sb, 0, sizeof(sb));
-    if (state.rolls_remaining == 0) {
-        strcat(sb, S); strcat(sb, C);
-        char temp[10];
-        snprintf(temp, sizeof(temp), "%d", choice_ev.choice); strcat(sb, temp);
-    } else {
-        strcat(sb, D); strcat(sb, C);
-        char temp[10];
-        snprintf(temp, sizeof(temp), "%05d", choice_ev.choice); strcat(sb, temp);
-    }
-    strcat(sb, C);
     char temp[10];
-    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,4)); strcat(sb, temp); 
-    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,3)); strcat(sb, temp); 
-    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,2)); strcat(sb, temp); 
-    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,1)); strcat(sb, temp); 
-    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,0)); strcat(sb, temp); 
-    strcat(sb, C);
+    //threadid 
+    // snprintf(temp, sizeof(temp), "%d", threadid); strcat(sb, temp); strcat(sb, U);
+    //rolls_remaining
     snprintf(temp, sizeof(temp), "%d", state.rolls_remaining); strcat(sb, temp); strcat(sb, C);
+    //dievals
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,0)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,1)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,2)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,3)); strcat(sb, temp); 
+    snprintf(temp, sizeof(temp), "%d", dievals_get(state.sorted_dievals,4)); strcat(sb, temp); 
+    strcat(sb, C);
+    //upper_total
     snprintf(temp, sizeof(temp), "%d", state.upper_total); strcat(sb, temp); strcat(sb, C);
+    //yahtzee_bonus_avail
     if (state.yahtzee_bonus_avail) { 
         strcat(sb, Y); 
     } else { 
         strcat(sb, N); 
     } strcat(sb, C);
+    //slots
     for (int i=0; i<slots_count(state.open_slots); i++){ 
         snprintf(temp, sizeof(temp), "%d", slots_get(state.open_slots,i)); strcat(sb, temp); strcat(sb, U); 
     }
     strcat(sb, C);
+    //Choice
+    int c = choice_ev.choice;
+    if (state.rolls_remaining == 0) {
+        snprintf(temp, sizeof(temp), "%d", choice_ev.choice); 
+    } else {
+        snprintf(temp, sizeof(temp), "%d%d%d%d%d",c&0b1,(c&0b10)>>1,(c&0b100)>>2,(c&0b1000)>>3,(c&0b10000)>>4); 
+    }
+    strcat(sb, temp); strcat(sb, C);
+    //EV
     snprintf(temp, sizeof(temp), "%.2f", choice_ev.ev); strcat(sb, temp);
+    //output
     puts(sb);
 }
 
@@ -660,16 +670,18 @@ u8 score_first_slot_in_context(GameState self) {
 //    BUILD_CACHE
 //-------------------------------------------------------------
 
-// gather up expected values in a multithreaded bottom-up fashion. this is like.. the main thing
-void build_ev_cache(GameState game) {
+// for a given gamestate, calc and cache all the expected values for dependent states. (this is like.. the main thing)
+void build_ev_cache(GameState apex_state) {
 
     Range range = outcomes_range_for(0b11111); 
     DieVals placeholder_dievals = (DieVals)0;
+    pthread_t threads[NUM_THREADS];
+    ProcessChunkArgs args[NUM_THREADS];
 
     // first handle special case of the most leafy leaf calcs -- where there's one slot left and no rolls remaining
-    int len = slots_count(game.open_slots);
+    int len = slots_count(apex_state.open_slots);
     for(int i=0; i<len; i++){
-        Slot single_slot = slots_get(game.open_slots, i);
+        Slot single_slot = slots_get(apex_state.open_slots, i);
         Slots single_slot_set = slots_init_va(1,single_slot); // set of a single slot 
         bool joker_rules_in_play = (single_slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
         for (int ii=0; ii<=joker_rules_in_play; ii++){ // yahtzee bonus -might- be available when joker rules are in play 
@@ -682,16 +694,16 @@ void build_ev_cache(GameState game) {
                 for(int iv=range.start; iv<range.stop; iv++){
                     DieVals outcome_combo = OUTCOMES[iv].dievals;
                     GameState state = gamestate_init(outcome_combo, single_slot_set, upper_total, 0, yahtzee_bonus_available);
-                    u8 score = score_first_slot_in_context(state);
+                    u8 score = score_first_slot_in_context(state); //TODO thread this?
                     ChoiceEV choice_ev = (ChoiceEV){single_slot, (f32)score};
                     EV_CACHE[state.id] = choice_ev;
-                    output(state, choice_ev);
+                    output(state, choice_ev, 0);
     } } } } 
 
 
     // for each slotset of each length 
     Slots slotspowerset[8192]; int slotspowerset_count=0; // 2^13=8192 is the size of the powerset of all slots
-    slots_powerset(game.open_slots, slotspowerset, &slotspowerset_count);    
+    slots_powerset(apex_state.open_slots, slotspowerset, &slotspowerset_count);    
     for (int i=1; i<slotspowerset_count; i++){//skip empty set
         Slots slots = slotspowerset[i];
         int slots_len = slots_count(slots);
@@ -711,32 +723,78 @@ void build_ev_cache(GameState game) {
                 // for each rolls remaining
                 for(int rolls_remaining=0; rolls_remaining<=3; rolls_remaining++){
 
-                    if (rolls_remaining==3) range = (Range){0,1}; 
-                    else range = outcomes_range_for(0b11111);
+                    range = (rolls_remaining==3)? (Range){0,1} : outcomes_range_for(0b11111);
+                    int full_count = range.stop-range.start;
+                    int chunk_count = (full_count+NUM_THREADS-1) / NUM_THREADS;
+                    if (full_count<NUM_THREADS) chunk_count = full_count;
+                    int threadidx=0;
 
-                    // for dieval_combo in dieval_combos { //Threads.@threads :static 
-                    for(int iv=range.start; iv<range.stop; iv++){
-                        DieVals dieval_combo=OUTCOMES[iv].dievals;
-                        process_dieval_combo(
-                            rolls_remaining,
-                            slots_len,
-                            slots,
-                            dieval_combo,
-                            joker_rules_in_play,
-                            yahtzee_bonus_available,
-                            upper_total
-                        );
-    } } } } }
+                    // for each dieval_combo chunk
+                    for(int iv=range.start; iv<range.stop; iv+=chunk_count){
+
+                        int chunk_end = min(iv+chunk_count, range.stop);
+                        Range range_for_thread = (Range){iv, chunk_end};
+
+                        args[threadidx] = (ProcessChunkArgs){
+                            gamestate_init(
+                                placeholder_dievals, 
+                                slots, 
+                                upper_total, 
+                                rolls_remaining, 
+                                yahtzee_bonus_available
+                            ),
+                            range_for_thread,
+                            threadidx 
+                        };
+
+                        int err = pthread_create(&threads[threadidx], NULL, process_chunk, (void*)&args[threadidx]); 
+                        assert(err==0);
+                        threadidx++;
+                    }
+
+                    // wait for threads to finish
+                    // if (all_chunks_size>1) 
+                    for( int idx=0; idx<threadidx; idx++) {
+                        int err = pthread_join(threads[idx], NULL); 
+                        assert(err==0);
+                        threads[idx]=0;
+                    }
+
+    } } } }
 
 }
 
-void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVals dieval_combo, 
-    bool joker_rules_in_play, bool yahtzee_bonus_available, u8 upper_total) { 
+void* process_chunk(void* void_args) {
+    ProcessChunkArgs* args = (ProcessChunkArgs*)void_args;
+    GameState s = args->state; 
+    int threadid=args->threadid; 
+    Range range=args->range;
+    // for each dieval combo in this chunk ...
+    for( int v=range.start; v<range.stop; v++) {
+        DieVals combo=OUTCOMES[v].dievals;
+        s.sorted_dievals = combo; // tweak the given state for this dieval combo iteration
+        process_state(s, threadid);
+    }
+    return NULL;
+}
 
-    usize threadid = 0; //TODO implement actual threading // threadid = Threads.threadid()
+// this does the work of calculating and store the expected value of a single gamestate
+void process_state(GameState state, int threadid) { // args will be a void* to a GameState. must be in void* form for threading
 
-    if (rolls_remaining==0 && slots_len > 1) { // slot selection, but not for already recorded leaf calcs  
-                                               // TODO the slots_len > 1 check should be handeled further up right after slots_len is calculated
+    // ProcessStateArgs typed_args = *(ProcessStateArgs*)args; 
+    // GameState state = typed_args.state;
+    // int threadid = typed_args.threadid; 
+
+    //TODO(?) we're recalculating these here but could be passed in as args
+        u8 slots_len = slots_count(state.open_slots); 
+        Slots slots = state.open_slots;
+        DieVals dieval_combo = state.sorted_dievals;
+        bool joker_rules_in_play = !slots_has(slots,YAHTZEE); // joker rules might be in effect whenever the yahtzee slot is already filled 
+        DieVal first_dieval;
+
+
+    if (state.rolls_remaining==0 && slots_len > 1) { // slot selection, but not for already recorded leaf calcs  
+                            // TODO the slots_len > 1 check should be handled further up in the caller right after slots_len is calculated
 
         //= HANDLE SLOT SELECTION  =//
 
@@ -745,15 +803,15 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
         // for slot in slots { 
         for(int i=0; i<slots_len; i++) {   
 
-            Slot slot = slots_get(slots,i);
+            Slot slot = slots_get(state.open_slots,i);
 
             // joker rules say extra yahtzees must be played in their matching upper slot if it's available
-            DieVal first_dieval = dievals_get(dieval_combo,0);
+            first_dieval = dievals_get(dieval_combo,0);
             bool joker_rules_matter = (joker_rules_in_play && score_yahtzee(dieval_combo)>0 && slots_has(slots,first_dieval));
             Slot head_slot = (joker_rules_matter ? first_dieval : slot);
 
-            bool yahtzee_bonus_avail_now = yahtzee_bonus_available;
-            u8 upper_total_now = upper_total;
+            bool yahtzee_bonus_avail_now = state.yahtzee_bonus_avail;
+            u8 upper_total_now = state.upper_total;
             DieVals dievals_or_placeholder = dieval_combo;
             f32 head_plus_tail_ev = 0.0;
             u8 rolls_remaining_now = 0;
@@ -797,27 +855,27 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
         GameState state_to_set = gamestate_init(
             dieval_combo,
             slots,
-            upper_total, 
+            state.upper_total, 
             0, //rolls_remaining
-            yahtzee_bonus_available
+            state.yahtzee_bonus_avail
         ); 
-        output(state_to_set, best);
+        output(state_to_set, best, threadid);
         EV_CACHE[state_to_set.id] = best;
 
-    } else if (rolls_remaining > 0) {  
+    } else if (state.rolls_remaining > 0) {  
         
     //= HANDLE DICE SELECTION =//    
 
-        u8 next_roll = rolls_remaining-1;
+        u8 next_roll = state.rolls_remaining-1;
         ChoiceEV best = (ChoiceEV){0, 0.0};
-        Ints32 selections = (rolls_remaining==3)? SELECTION_SET_OF_ALL_DICE_ONLY : SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS;
+        Ints32 selections = (state.rolls_remaining==3)? SELECTION_SET_OF_ALL_DICE_ONLY : SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS;
         
         // HOT LOOP !
         // for each possible selection of dice from this starting dice combo, 
         // we calculate the expected value of rolling that selection, then store the best selection along with its EV 
         for(int i=0; i<selections.count; i++) {
             Selection selection = selections.arr[i];
-            f32 avg_ev_for_selection = avg_ev(dieval_combo, selection, slots, upper_total, next_roll,yahtzee_bonus_available, threadid); 
+            f32 avg_ev_for_selection = avg_ev(dieval_combo, selection, slots, state.upper_total, next_roll, state.yahtzee_bonus_avail, threadid); 
             if (avg_ev_for_selection > best.ev){
                 best = (ChoiceEV){selection, avg_ev_for_selection};
             } 
@@ -826,14 +884,15 @@ void process_dieval_combo(u8 rolls_remaining , int slots_len, Slots slots, DieVa
         GameState state_to_set = gamestate_init( 
             dieval_combo,
             slots, 
-            upper_total, 
-            rolls_remaining, 
-            yahtzee_bonus_available 
+            state.upper_total, 
+            state.rolls_remaining, 
+            state.yahtzee_bonus_avail
         ); 
-        output(state_to_set, best);
-        EV_CACHE[state_to_set.id] = best;
+        output(state_to_set, best, threadid);
+        EV_CACHE[state_to_set.id] = best; // we're writing from multiple threads but each thread will be setting a different state_to_set.id
 
     }// if rolls_remaining...  
+
 }// process_dieval_combo
 
 
@@ -891,16 +950,14 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
 
 void init_caches(){
 
-    CORES = 1; // default to 1 core
+    OUTCOME_EVS_BUFFER = malloc(NUM_THREADS * sizeof(f32*));
+    for (int i = 0; i < NUM_THREADS; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
 
-    OUTCOME_EVS_BUFFER = malloc(CORES * sizeof(f32*));
-    for (int i = 0; i < CORES; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
+    NEWVALS_BUFFER = malloc(NUM_THREADS * sizeof(u16*));
+    for (int i = 0; i < NUM_THREADS; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(DieVals)); }
 
-    NEWVALS_BUFFER = malloc(CORES * sizeof(u16*));
-    for (int i = 0; i < CORES; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(DieVals)); }
-
-    EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(CORES * sizeof(f32*));
-    for (int i = 0; i < CORES; i++) { EVS_TIMES_ARRANGEMENTS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
+    EVS_TIMES_ARRANGEMENTS_BUFFER = malloc(NUM_THREADS * sizeof(f32*));
+    for (int i = 0; i < NUM_THREADS; i++) { EVS_TIMES_ARRANGEMENTS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
 
     // setup helper values
     cache_selection_ranges(); 
@@ -929,6 +986,8 @@ int main() {
     //define a particular game state to test
     GameState game = gamestate_init( 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{1}}), 0, 1, false //  0.8333 per Swift
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{9}}), 0, 2, false //  
+        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){2,{7,8}}), 0, 2, false// 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
         dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
         // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
@@ -941,7 +1000,7 @@ int main() {
     build_ev_cache(game);
 
     // and the answer is...
-    printf("EV of test gamestate : %.4f\n", EV_CACHE[game.id].ev);
+    printf("EV with %d thread(s): %.4f\n", NUM_THREADS, EV_CACHE[game.id].ev);
 
     // run_tests();    
 

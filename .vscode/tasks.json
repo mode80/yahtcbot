@@ -7,10 +7,12 @@
             "args": [
                 "-O3",
                 "-o",
+                // "yahtcbot.S", //the disassembly file
+                // "-S", //flag to ouput disassembly file
                 "${workspaceFolder}/yahtcbot",
                 "${workspaceFolder}/yahtcbot.c",
               ],
-            "options": { "cwd": "${fileDirname}" },
+            "options": { "cwd": "${workspaceFolder}" },
             // "problemMatcher": [ "$gcc" ],
             "group": { "kind": "build", "isDefault": true}
         } ,
@@ -18,11 +20,29 @@
             "type": "cppbuild",
             "label": "Build Debug",
             "command": "clang",
-            "args": ["-g", "-o", "${workspaceFolder}/yahtcbot", "${workspaceFolder}/*.c"],
-            "options": { "cwd": "${fileDirname}" },
+            "args": [
+                "-g", 
+                "-save-temps",
+                "-o", 
+                // "yahtcbot.S", 
+                // "-S", 
+                "${workspaceFolder}/yahtcbot", 
+                "${workspaceFolder}/*.c"
+            ],
+            "options": { "cwd": "${workspaceFolder}" },
             // "problemMatcher": [ "$gcc" ],
             "group": { "kind": "build", "isDefault":false}
-        }
-    ],
+        },
+        // {
+        //     "type": "shell",
+        //     "label": "Generate Disassembly",
+        //     "command": "objdump",
+        //     "args": [
+        //         "-d", "yahtcbot", "-l", ">", "yahtcbot.S"
+        //     ],
+        //     "options": { "cwd": "${workspaceFolder}" },
+        //     // "group": { "kind": "none", "isDefault":false}
+        // }
+     ],
     "version": "2.0.0"
 }
