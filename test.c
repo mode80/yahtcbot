@@ -285,27 +285,20 @@ void test_cache_roll_outcomes_data() { //TODO could be better
 
     cache_roll_outcomes_data();
 
-    assert(sizeof(OUTCOMES) / sizeof(OUTCOMES[0]) == 1683);
-
-    // check that OUTCOMES are in sync with each oter
-    for (int i = 0; i < 1683; i++) {
-        assert(OUTCOMES[i].dievals == OUTCOME_DIEVALS[i]);
-        assert(OUTCOMES[i].mask == OUTCOME_MASKS[i]);
-        assert(OUTCOMES[i].arrangements == OUTCOME_ARRANGEMENTS[i]);
-    }
+    assert(sizeof(OUTCOME_DIEVALS) / sizeof(OUTCOME_DIEVALS[0]) == 1683);
 
     //compare to known good values from Swift implementation
-    assert(OUTCOMES[1682].dievals == dievals_from_arr5((int[5]){6,6,6,6,6}));
-    assert(OUTCOMES[1682].mask == dievals_from_arr5((int[5]){0,0,0,0,0}));
-    assert(OUTCOMES[1682].arrangements == 1); 
+    assert(OUTCOME_DIEVALS[1682] == dievals_from_arr5((int[5]){6,6,6,6,6}));
+    assert(OUTCOME_MASKS[1682] == dievals_from_arr5((int[5]){0,0,0,0,0}));
+    assert(OUTCOME_ARRANGEMENTS[1682] == 1); 
 
-    assert(OUTCOMES[0].dievals == dievals_from_arr5((int[5]){0,0,0,0,0}));
-    assert(OUTCOMES[0].mask == dievals_from_arr5((int[5]){7,7,7,7,7}));
-    assert(OUTCOMES[0].arrangements == 1); 
+    assert(OUTCOME_DIEVALS[0] == dievals_from_arr5((int[5]){0,0,0,0,0}));
+    assert(OUTCOME_MASKS[0] == dievals_from_arr5((int[5]){7,7,7,7,7}));
+    assert(OUTCOME_ARRANGEMENTS[0] == 1); 
 
-    assert(OUTCOMES[1000].dievals == dievals_from_arr5((int[5]){1,1,0,1,4}));
-    assert(OUTCOMES[1000].mask == dievals_from_arr5((int[5]){0,0,7,0,0}));
-    assert(OUTCOMES[1000].arrangements == 4); 
+    assert(OUTCOME_DIEVALS[1000] == dievals_from_arr5((int[5]){1,1,0,1,4}));
+    assert(OUTCOME_MASKS[1000] == dievals_from_arr5((int[5]){0,0,7,0,0}));
+    assert(OUTCOME_ARRANGEMENTS[1000] == 4); 
 
 }
 

@@ -69,7 +69,15 @@ typedef struct GameState {
     bool yahtzee_bonus_avail;// = 1bit = 2     "
 } GameState;
 
-typedef struct ProcessChunkArgs { GameState state; Range range; int threadid; } ProcessChunkArgs;
+typedef struct ProcessChunkArgs { 
+    Slots slots;
+    u8 slots_len;
+    u8 upper_total;
+    u8 rolls_remaining;
+    bool joker_rules_in_play;
+    Range range_for_thread; 
+    int thread_id; 
+} ProcessChunkArgs;
 
 f32** OUTCOME_EVS_BUFFER;
 DieVals** NEWVALS_BUFFER ;
@@ -102,7 +110,7 @@ int min(int a, int b);
 
 int max(int a, int b);
 
-float distinct_arrangements_for(Ints8 dieval_vec);
+f32 distinct_arrangements_for(Ints8 dieval_vec);
 
 int countTrailingZeros(int x);
 
@@ -186,8 +194,8 @@ f32 avg_ev(u16 start_dievals_data, Selection selection, Slots slots, u8 upper_to
 
 void* process_chunk(void* args);
 
-void process_state(GameState state, int threadid) ;
- 
+void process_state(GameState state, u8 slots_len, bool joker_rules_in_play, int thread_id);
+
 u64 powerset_of_size_n_count(int n);
 
 void print_state_choice(GameState state, ChoiceEV choice_ev, int threadid);
