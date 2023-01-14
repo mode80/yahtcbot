@@ -14,7 +14,7 @@ u64 tick_interval;
 u64 ticks = 0;
 int progress_blocks;
 
-const int NUM_THREADS = 8; 
+const int NUM_THREADS = 4; 
 
 //-------------------------------------------------------------
 //  UTILS
@@ -415,7 +415,6 @@ void cache_roll_outcomes_data() {
             OUTCOME_DIEVALS[i] = dievals;
             OUTCOME_MASKS[i] = mask;
             OUTCOME_ARRANGEMENTS[i] = arrangement_count;
-            OUTCOMES[i] = (Outcome){ dievals, mask, arrangement_count}; //TODO remove this
             i+=1;
             assert(i<=1683);
         } 
@@ -684,15 +683,16 @@ void build_ev_cache(GameState apex_state) {
         Slot single_slot = slots_get(apex_state.open_slots, i);
         Slots single_slot_set = slots_init_va(1,single_slot); // set of a single slot 
         bool joker_rules_in_play = (single_slot != YAHTZEE); // joker rules in effect when the yahtzee slot is not open 
+        // for each yahtzee bonus availability
         for (int ii=0; ii<=joker_rules_in_play; ii++){ // yahtzee bonus -might- be available when joker rules are in play 
             bool yahtzee_bonus_available = (bool)ii;
-            // for upper_total in slot.useful_upper_totals() {
+            // for each upper_total 
             Ints64 upper_totals = useful_upper_totals(single_slot_set);
             for(int iii=0; iii<upper_totals.count; iii++){
                 u8 upper_total = upper_totals.arr[iii]; 
-                // for outcome_combo in all_dieval_combos{
+                // for each outcome_combo 
                 for(int iv=range.start; iv<range.stop; iv++){
-                    DieVals outcome_combo = OUTCOMES[iv].dievals;
+                    DieVals outcome_combo = OUTCOME_DIEVALS[iv];
                     GameState state = gamestate_init(outcome_combo, single_slot_set, upper_total, 0, yahtzee_bonus_available);
                     u8 score = score_first_slot_in_context(state); //TODO thread this?
                     ChoiceEV choice_ev = (ChoiceEV){single_slot, (f32)score};
@@ -771,7 +771,7 @@ void* process_chunk(void* void_args) {
     Range range=args->range;
     // for each dieval combo in this chunk ...
     for( int v=range.start; v<range.stop; v++) {
-        DieVals combo=OUTCOMES[v].dievals;
+        DieVals combo=OUTCOME_DIEVALS[v];
         s.sorted_dievals = combo; // tweak the given state for this dieval combo iteration
         process_state(s, threadid);
     }
@@ -793,7 +793,7 @@ void process_state(GameState state, int threadid) { // args will be a void* to a
         DieVal first_dieval;
 
 
-    if (state.rolls_remaining==0 && slots_len > 1) { // slot selection, but not for already recorded leaf calcs  
+    if (state.rolls_remaining==0 ) { // slot selection, but not for already recorded leaf calcs  
                             // TODO the slots_len > 1 check should be handled further up in the caller right after slots_len is calculated
 
         //= HANDLE SLOT SELECTION  =//
@@ -818,9 +818,9 @@ void process_state(GameState state, int threadid) { // args will be a void* to a
 
             // find the collective ev for the all the slots with this iteration's slot being first 
             // do this by summing the ev for the first (head) slot with the ev value that we look up for the remaining (tail) slots
-            int passes = (slots_len==1 ? 1 : 2); // to do this, we need two passes unless there's only 1 slot left //TODO slots_len is ALWAYS > 1 here!
+            int passes = (slots_len==1 ? 1 : 2); // to do this, we need two passes unless there's only 1 slot left 
             for(int ii=1; ii<=passes; ii++) {
-                Slots slots_piece = ii==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on the head only, or the set of slots without the head
+                Slots slots_piece = ii==1? slots_init_va(1,head_slot) : slots_removing(slots, head_slot);  // work on 1)the head only, or 2) the set without the head
                 u8 relevant_upper_total = (upper_total_now + best_upper_total(slots_piece) >= 63)? upper_total_now : 0;  // only relevant totals are cached
                 GameState state_to_get = gamestate_init(
                     dievals_or_placeholder,
@@ -830,7 +830,7 @@ void process_state(GameState state, int threadid) { // args will be a void* to a
                     yahtzee_bonus_avail_now
                 );
                 ChoiceEV choice_ev = EV_CACHE[state_to_get.id];
-                if (ii==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  //TODO don't need slots_len>1 check here
+                if (ii==1 && slots_len>1) {// prep 2nd pass on relevant 1st pass only..  
                     // going into tail slots next, we may need to adjust the state based on the head choice
                     if (choice_ev.choice <= SIXES){  // adjust upper total for the next pass 
                         u8 added = fmod(choice_ev.ev , 100); // the modulo 100 here removes any yahtzee bonus from ev since that doesnt' count toward upper bonus total
@@ -861,6 +861,7 @@ void process_state(GameState state, int threadid) { // args will be a void* to a
         ); 
         output(state_to_set, best, threadid);
         EV_CACHE[state_to_set.id] = best;
+
 
     } else if (state.rolls_remaining > 0) {  
         
@@ -989,8 +990,8 @@ int main() {
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){1,{9}}), 0, 2, false //  
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){2,{7,8}}), 0, 2, false// 
         // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){3,{4,5,6}}), 0, 2, false// 38.9117 per Swift
-        // dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
-        dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
+        dievals_from_arr5( (int[5]) {3,4,4,6,6} ), slots_from_ints16((Ints16){8,{1,2,8,9,10,11,12,13}}), 0, 2, false// 137.3749 per Swift
+        // dievals_from_arr5( (int[5]) {0,0,0,0,0} ), slots_from_ints16((Ints16){13,{1,2,3,4,5,6,7,8,9,10,11,12,13}}), 0, 3, false // 254.5896 
     );  
 
     // setup progress bar 

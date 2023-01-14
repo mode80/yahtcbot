@@ -5,6 +5,7 @@
             "label": "Build Release",
             "command": "clang",
             "args": [
+                // "-march=native", //only works with gcc but gcc doesn't SIMD well
                 "-O3",
                 "-o",
                 // "yahtcbot.S", //the disassembly file
@@ -22,7 +23,7 @@
             "command": "clang",
             "args": [
                 "-g", 
-                "-save-temps",
+                // "-save-temps",
                 "-o", 
                 // "yahtcbot.S", 
                 // "-S", 

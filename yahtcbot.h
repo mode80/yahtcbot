@@ -78,7 +78,6 @@ f32** EVS_TIMES_ARRANGEMENTS_BUFFER ;
 int RANGE_IDX_FOR_SELECTION[32];
 DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
 Range SELECTION_RANGES[32];  //new Range[32];  
-Outcome OUTCOMES[1683]; //new Outcome[1683]    
 DieVals OUTCOME_DIEVALS[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
 DieVals OUTCOME_MASKS[1683]; // new u16[1683] 
 f32 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683]  //TODO test making this a u8 for cacheline efficiency
