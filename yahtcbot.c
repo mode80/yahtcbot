@@ -908,7 +908,7 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     // blit all each roll outcome for the given dice selection onto the unrolled start_dievals and stash results in the NEWVALS_BUFFER 
     #pragma GCC ivdepi // one tries. no help with auto SIMD in GCC AFAICT
     #pragma clang loop vectorize(enable) // clang does does appear to auto-SIMD this loop
-    for (int i=range.start; i<range.stop; i++) { 
+    for (usize i=range.start; i<range.stop; i++) { 
         NEWVALS_BUFFER[threadid][i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
         NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
     } 
