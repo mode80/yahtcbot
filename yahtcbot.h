@@ -42,22 +42,22 @@ Slot THREE_OF_A_KIND; Slot FOUR_OF_A_KIND;
 Slot FULL_HOUSE; Slot SM_STRAIGHT; 
 Slot LG_STRAIGHT; Slot YAHTZEE; Slot CHANCE;
 
-typedef struct ChoiceEV {
-    Choice choice;
-    f32 ev;
-} ChoiceEV;
+// typedef struct ChoiceEV {
+//     Choice choice;
+//     f32 ev;
+// } ChoiceEV;
 
-typedef struct DieValsID {  
-    DieVals dievals;
-    u8 id;  // the id is a kind of offset that later helps us fast-index into the EV_CACHE 
-            // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
-} DieValsID;
+// typedef struct DieValsID {  
+//     DieVals dievals;
+//     u8 id;  // the id is a kind of offset that later helps us fast-index into the EV_CACHE 
+//             // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
+// } DieValsID;
 
-typedef struct Outcome {  // an outcome represents one way a subset of 5 dievals could turn out after being rolled
-    DieVals dievals; // a set of 5 values where 0 means "unrolled" and other values are 1-6 representing the outcome of the roll
-    DieVals mask; // stores a corresponding mask handy for later blitting this outcome onto outer pre-rolled DieVals to get the post-roll state 
-    f32 arrangements; // how many distinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
-} Outcome;
+// typedef struct Outcome {  // an outcome represents one way a subset of 5 dievals could turn out after being rolled
+//     DieVals dievals; // a set of 5 values where 0 means "unrolled" and other values are 1-6 representing the outcome of the roll
+//     DieVals mask; // stores a corresponding mask handy for later blitting this outcome onto outer pre-rolled DieVals to get the post-roll state 
+//     f32 arrangements; // how many distinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
+// } Outcome;
 
 typedef struct GameState {
     u32 id; // 30 bits # with the id, 
@@ -81,16 +81,16 @@ typedef struct ProcessChunkArgs {
 
 f32** OUTCOME_EVS_BUFFER;
 DieVals** NEWVALS_BUFFER ;
-f32** EVS_TIMES_ARRANGEMENTS_BUFFER ;
 
 int RANGE_IDX_FOR_SELECTION[32];
-DieValsID SORTED_DIEVALS [32767]; //new DieValsID[32767];
-Range SELECTION_RANGES[32];  //new Range[32];  
-DieVals OUTCOME_DIEVALS[1683]; //new u16[1683]  //these 3 arrays mirror that in OUTCOMES but are contiguous and faster to access
-DieVals OUTCOME_MASKS[1683]; // new u16[1683] 
-f32 OUTCOME_ARRANGEMENTS[1683]; //new f32[1683]  //TODO test making this a u8 for cacheline efficiency
-ChoiceEV* EV_CACHE; // 2^30 slots hold all unique game state EVs
-//type (*fixed_array)[n]
+DieVals SORTED_DIEVALS [32767]; 
+f32 SORTED_DIEVALS_ID [32767]; 
+Range SELECTION_RANGES[32];  
+DieVals OUTCOME_DIEVALS[1683]; 
+DieVals OUTCOME_MASKS[1683]; 
+f32 OUTCOME_ARRANGEMENTS[1683]; // could be a u8 but stored as f32 for faster final hotloop calculation
+f32* EV_CACHE; // 2^30 slots hold all unique game state EVs
+Choice* CHOICE_CACHE; 
 
 Ints32 SELECTION_SET_OF_ALL_DICE_ONLY; //  selections are bitfields where '1' means roll and '0' means don't roll 
 Ints32 SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS; // Ints32 type can hold 32 different selections 
@@ -198,5 +198,5 @@ void process_state(GameState state, u8 slots_len, bool joker_rules_in_play, int 
 
 u64 powerset_of_size_n_count(int n);
 
-void print_state_choice(GameState state, ChoiceEV choice_ev, int threadid);
+void print_state_choice(GameState state, Choice choice, f32 ev, int threadid);
   
