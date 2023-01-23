@@ -600,12 +600,12 @@ u8 score_slot_with_dice(Slot slot, DieVals sorted_dievals) {
 GameState gamestate_init(DieVals sorted_dievals, Slots open_slots, u8 upper_total, 
                     u8 rolls_remaining, bool yahtzee_bonus_avail) { 
     GameState self = (GameState){};
-    u8 dievals_id = SORTED_DIEVALS_ID[sorted_dievals]; // this is the 8-bit encoding of self.sorted_dievals
-    self.id =  (u32)dievals_id;                        // self.id will use 30 bits total...
-    self.id |= (u32)(open_slots)               << 7;   // slots.data doesn't use its rightmost bit so we only shift 7 to make room for the 8-bit dieval_id above 
-    self.id |= (u32)(upper_total)              << 21;  // make room for 13+8 bit stuff above 
-    self.id |= (u32)(rolls_remaining)          << 27;  // make room for the 13+8+6 bit stuff above
-    self.id |= (u32)(yahtzee_bonus_avail?1:0)  << 29;  // make room for the 13+8+6+2 bit stuff above
+    u8 dievals_id = SORTED_DIEVALS_ID[sorted_dievals]; // self.id will use 30 bits total...
+    self.id =  (u32)dievals_id;                        // this is the 8-bit encoding of self.sorted_dievals
+    self.id |= (u32)(yahtzee_bonus_avail?1:0)  << 8;   // this is the 1-bit encoding of self.yahtzee_bonus_avail 
+    self.id |= (u32)(open_slots)               << 8;   // slots doesn't use its rightmost bit so we only shift 8. it's fully 14 bits itself 
+    self.id |= (u32)(upper_total)              << 22;  // upper total uses 6 bits 
+    self.id |= (u32)(rolls_remaining)          << 28;  // 0-3 rolls is stored in 2 bits.  8+1+14-1+6+2 = 30 bits total 
     self.sorted_dievals = sorted_dievals;
     self.open_slots = open_slots;
     self.upper_total = upper_total;
