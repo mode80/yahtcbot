@@ -23,7 +23,7 @@
             "command": "clang",
             "args": [
                 "-g", 
-                "-save-temps",
+                // "-save-temps",
                 "-o", 
                 // "yahtcbot.S", 
                 // "-S", 

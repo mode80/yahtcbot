@@ -4,6 +4,19 @@
 
 #include "yahtcbot.h" 
 
+extern Slot ACES; extern Slot TWOS; extern Slot THREES;
+extern Slot FOURS; extern Slot FIVES; extern Slot SIXES;
+extern Slot THREE_OF_A_KIND; extern Slot FOUR_OF_A_KIND;
+extern Slot FULL_HOUSE; extern Slot SM_STRAIGHT; 
+extern Slot LG_STRAIGHT; extern Slot YAHTZEE; extern Slot CHANCE;
+
+extern DieVals SORTED_DIEVALS [32767]; 
+extern f32 SORTED_DIEVALS_ID [32767]; 
+extern Range SELECTION_RANGES[32];
+extern DieVals OUTCOME_DIEVALS[1683]; 
+extern DieVals OUTCOME_MASKS[1683]; 
+extern f32 OUTCOME_ARRANGEMENTS[1683]; // could be a u8 but stored as f32 for faster final hotloop calculation
+
 void test_powerset() {
     // Test input
     Ints8 items = {3, {1, 2, 3}};
@@ -201,32 +214,25 @@ void test_cache_sorted_dievals() {
     cache_sorted_dievals();
 
     // Check that the first element in SORTED_DIEVALS is the special wildcard
-    assert(SORTED_DIEVALS[0].id == 0);
-    assert(SORTED_DIEVALS[0].dievals == 0);
+    assert(SORTED_DIEVALS_ID[0] == 0);
+    assert(SORTED_DIEVALS[0] == 0);
 
     // Check that all other elements in SORTED_DIEVALS are set correctly
     for (int i = 1; i < 32767; i++) {
-        DieValsID dieval_id = SORTED_DIEVALS[i];
-        if (dieval_id.id == 0) { continue; // skip the special wildcard }
-
-        // Check that dv_id.id is the index of dv_id.dievals in SORTED_DIEVALS
-        assert(SORTED_DIEVALS[dieval_id.dievals].id == dieval_id.id);
-
         // Check that permutation dv_id.dievals is equal to i when i is treated as a DieVals and sorted
         Ints8 dv_ints_to_sort = { .count = 5 };
         for (int j=0; j<5; j++){ dv_ints_to_sort.arr[j] = dievals_get(i, j); }        
         qsort(dv_ints_to_sort.arr, 5, sizeof(int), compare_ints);
         DieVal sorted_dievals = dievals_from_ints8(dv_ints_to_sort);
-        assert(SORTED_DIEVALS[i].dievals = sorted_dievals);
+        assert(SORTED_DIEVALS[i] = sorted_dievals);
 
-        }
     }
 
     // Check that cache is able to lookup the correct sorted dievals for a given DieVals
     DieVals unsorted_dievals = dievals_from_arr5((int[5]){3, 2, 1, 5, 4});
     DieVals expected_sorted = dievals_from_arr5((int[5]){1, 2, 3, 4, 5}); 
 
-    DieVals dievals_looked_up = SORTED_DIEVALS[unsorted_dievals].dievals;
+    DieVals dievals_looked_up = SORTED_DIEVALS[unsorted_dievals];
     bool is_same = (dievals_looked_up == expected_sorted);
     assert(is_same);
 }

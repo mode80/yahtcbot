@@ -7,7 +7,29 @@ Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
 Slot FULL_HOUSE = 9; Slot SM_STRAIGHT = 10; 
 Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
-int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
+f32** OUTCOME_EVS_BUFFER;
+DieVals** NEWVALS_BUFFER ;
+
+int RANGE_IDX_FOR_SELECTION[32];
+DieVals SORTED_DIEVALS [32767]; 
+f32 SORTED_DIEVALS_ID [32767]; 
+Range SELECTION_RANGES[32];  
+DieVals OUTCOME_DIEVALS[1683]; 
+DieVals OUTCOME_MASKS[1683]; 
+f32 OUTCOME_ARRANGEMENTS[1683]; // could be a u8 but stored as f32 for faster final hotloop calculation
+f32* EV_CACHE; // 2^30 slots hold all unique game state EVs
+Choice* CHOICE_CACHE; 
+
+Ints32 SELECTION_SET_OF_ALL_DICE_ONLY; //  selections are bitfields where '1' means roll and '0' means don't roll 
+Ints32 SET_OF_ALL_SELECTIONS; // Ints32 type can hold 32 different selections 
+ 
+Range SELECTION_RANGES[32] = {(Range){0, 1}, (Range){1, 7}, (Range){7, 13}, (Range){13, 34}, (Range){90, 96}, (Range){179, 200}, (Range){592, 613}, 
+    (Range){34, 90}, (Range){96, 102}, (Range){200, 221}, (Range){613, 634}, (Range){102, 158}, (Range){221, 242}, (Range){634, 690}, (Range){263, 319}, 
+    (Range){746, 872}, (Range){1005, 1011}, (Range){158, 179}, (Range){319, 340}, (Range){690, 746}, (Range){242, 263}, (Range){872, 928}, (Range){1011, 1067}, 
+    (Range){340, 466}, (Range){928, 949}, (Range){1067, 1123}, (Range){1249, 1305}, (Range){466, 592}, (Range){949, 1005}, (Range){1123, 1249}, 
+    (Range){1305, 1431}, (Range){1431, 1683} } ; //# = cache_selection_ranges()   # TODO confirm these are correct
+
+// int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 const int SENTINEL=INT_MIN;
 u64 tick_limit;
 u64 tick_interval;
@@ -165,13 +187,6 @@ Ints8* get_unique_perms(Ints8 items, int* result_count) {
     make_unique_perms(items, 0, result, result_count);
     return result;
 }
-
-// returns a range which corresponds the precomputed dice roll outcome data corresponding to the given selection
-Range outcomes_range_for(Selection selection) {
-    int idx = RANGE_IDX_FOR_SELECTION[selection];
-    Range range = SELECTION_RANGES[idx]; 
-    return range;
-} 
 
 void print_state_choices_header() { 
     printf("choice_type,choice,dice,rolls_remaining,upper_total,yahtzee_bonus_avail,open_slots,expected_value");
@@ -670,7 +685,7 @@ u8 score_first_slot_in_context(GameState self) {
 // for a given gamestate, calc and cache all the expected values for dependent states. (this is like.. the main thing)
 void build_ev_cache(GameState apex_state) {
 
-    Range range = outcomes_range_for(0b11111); 
+    Range range = SELECTION_RANGES[0b11111]; 
     DieVals placeholder_dievals = (DieVals)0;
     pthread_t threads[NUM_THREADS];
     ProcessChunkArgs args[NUM_THREADS];
@@ -717,7 +732,7 @@ void build_ev_cache(GameState apex_state) {
             // for each rolls remaining
             for(u8 rolls_remaining=0; rolls_remaining<=3; rolls_remaining++){
 
-                range = (rolls_remaining==3)? (Range){0,1} : outcomes_range_for(0b11111);
+                range = (rolls_remaining==3)? (Range){0,1} : SELECTION_RANGES[0b11111];
                 int full_count = range.stop-range.start;
                 int chunk_count = (full_count+NUM_THREADS-1) / NUM_THREADS;
                 if (full_count<NUM_THREADS) chunk_count = full_count;
@@ -861,7 +876,7 @@ void process_state(GameState state, u8 slots_len, bool joker_rules_in_play, int 
     //= HANDLE DICE SELECTION =//    
 
         u8 next_roll = state.rolls_remaining-1;
-        Ints32 selections = (state.rolls_remaining==3)? SELECTION_SET_OF_ALL_DICE_ONLY : SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS;
+        Ints32 selections = (state.rolls_remaining==3)? SELECTION_SET_OF_ALL_DICE_ONLY : SET_OF_ALL_SELECTIONS;
         
         // HOT LOOP !
         // for each possible selection of dice from this starting dice combo, 
@@ -899,7 +914,7 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
 
     f32 total_ev_for_selection = 0.0 ;
     f32 outcomes_arrangements_count = 0.0;
-    Range range = outcomes_range_for(selection);
+    Range range = SELECTION_RANGES[selection];
 
     GameState floor_state = gamestate_init(
         (DieVals)0,
@@ -933,8 +948,9 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     for (usize i=range.start; i<range.stop; i++) { // this loop is all math so should be eligble for SIMD optimization
         // we have EVs for each "combination" but we need the average all "permutations" 
         // -- so we mutliply by the number of distinct arrangements for each combo 
-        total_ev_for_selection +=  OUTCOME_EVS_BUFFER[threadid][i] * OUTCOME_ARRANGEMENTS[i];
-        outcomes_arrangements_count += OUTCOME_ARRANGEMENTS[i];
+        f32 count = OUTCOME_ARRANGEMENTS[i];
+        total_ev_for_selection +=  OUTCOME_EVS_BUFFER[threadid][i] * count ;
+        outcomes_arrangements_count += count;
     } 
 
     // this final step gives us the average EV for all permutations of rolled dice 
@@ -957,9 +973,9 @@ void init_caches(){
 
     // selection sets
     SELECTION_SET_OF_ALL_DICE_ONLY = (Ints32){ 1, 0b11111 }; //  selections are bitfields where '1' means roll and '0' means don't roll 
-    SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS = (Ints32){}; // Ints32 type can hold 32 different selections 
-    for(int i=0b00000; i<=0b11111; i++) SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS.arr[i]=i; 
-    SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS.count=32;
+    SET_OF_ALL_SELECTIONS = (Ints32){}; // Ints32 type can hold 32 different selections 
+    for(int i=0b00000; i<=0b11111; i++) SET_OF_ALL_SELECTIONS.arr[i]=i; 
+    SET_OF_ALL_SELECTIONS.count=32;
 
     //gignormous cache for holding EVs of all game states
     //    // EV_CACHE = (ChoiceEV(*)[1073741824])malloc(pow(2,30) * sizeof(ChoiceEV)); // 2^30 slots hold all unique game states 

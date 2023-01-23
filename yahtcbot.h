@@ -29,35 +29,10 @@ typedef struct { size_t count; int arr[32]; } Ints32;
 typedef struct { size_t count; int arr[64]; } Ints64;
 typedef struct { size_t count; int arr[128]; } Ints128;
 
-
-const int SENTINEL; 
 typedef struct { int start; int stop; } Range;
 
 typedef u16 DieVals ; // 5 dievals, each from 0 to 6, can be encoded in 2 bytes total, each taking 3 bits{ 
 typedef u16 Slots ;  // 13 sorted Slots can be positionally encoded in one u16
-
-Slot ACES; Slot TWOS; Slot THREES;
-Slot FOURS; Slot FIVES; Slot SIXES;
-Slot THREE_OF_A_KIND; Slot FOUR_OF_A_KIND;
-Slot FULL_HOUSE; Slot SM_STRAIGHT; 
-Slot LG_STRAIGHT; Slot YAHTZEE; Slot CHANCE;
-
-// typedef struct ChoiceEV {
-//     Choice choice;
-//     f32 ev;
-// } ChoiceEV;
-
-// typedef struct DieValsID {  
-//     DieVals dievals;
-//     u8 id;  // the id is a kind of offset that later helps us fast-index into the EV_CACHE 
-//             // it's also an 8-bit handle to the 16-bit DieVals for more compact storage within a 32bit GameState ID
-// } DieValsID;
-
-// typedef struct Outcome {  // an outcome represents one way a subset of 5 dievals could turn out after being rolled
-//     DieVals dievals; // a set of 5 values where 0 means "unrolled" and other values are 1-6 representing the outcome of the roll
-//     DieVals mask; // stores a corresponding mask handy for later blitting this outcome onto outer pre-rolled DieVals to get the post-roll state 
-//     f32 arrangements; // how many distinguishable ways can these dievals be arranged (ie swapping identical dievals don't count)
-// } Outcome;
 
 typedef struct GameState {
     u32 id; // 30 bits # with the id, 
@@ -78,23 +53,6 @@ typedef struct ProcessChunkArgs {
     Range range_for_thread; 
     int thread_id; 
 } ProcessChunkArgs;
-
-f32** OUTCOME_EVS_BUFFER;
-DieVals** NEWVALS_BUFFER ;
-
-int RANGE_IDX_FOR_SELECTION[32];
-DieVals SORTED_DIEVALS [32767]; 
-f32 SORTED_DIEVALS_ID [32767]; 
-Range SELECTION_RANGES[32];  
-DieVals OUTCOME_DIEVALS[1683]; 
-DieVals OUTCOME_MASKS[1683]; 
-f32 OUTCOME_ARRANGEMENTS[1683]; // could be a u8 but stored as f32 for faster final hotloop calculation
-f32* EV_CACHE; // 2^30 slots hold all unique game state EVs
-Choice* CHOICE_CACHE; 
-
-Ints32 SELECTION_SET_OF_ALL_DICE_ONLY; //  selections are bitfields where '1' means roll and '0' means don't roll 
-Ints32 SELECTION_SET_OF_ALL_POSSIBLE_SELECTIONS; // Ints32 type can hold 32 different selections 
- 
 
 Ints8* powerset(const Ints8 items, size_t *result_count);
 
