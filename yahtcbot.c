@@ -7,9 +7,6 @@ Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
 Slot FULL_HOUSE = 9; Slot SM_STRAIGHT = 10; 
 Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
-f32** OUTCOME_EVS_BUFFER;
-DieVals** NEWVALS_BUFFER ;
-
 int RANGE_IDX_FOR_SELECTION[32];
 DieVals SORTED_DIEVALS [32767]; 
 f32 SORTED_DIEVALS_ID [32767]; 
@@ -915,6 +912,8 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     f32 total_ev_for_selection = 0.0 ;
     f32 outcomes_arrangements_count = 0.0;
     Range range = SELECTION_RANGES[selection];
+    DieVals NEWVALS_BUFFER[1683]; // TODO this could be as low as 252 but require more ADD ops below(?)
+    f32 OUTCOME_EVS_BUFFER[1683]; 
 
     GameState floor_state = gamestate_init(
         (DieVals)0,
@@ -930,17 +929,17 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
     #pragma GCC ivdepi // one tries. no help with auto SIMD in GCC AFAICT
     #pragma clang loop vectorize(enable) // clang does does appear to auto-SIMD this loop
     for (usize i=range.start; i<range.stop; i++) { 
-        NEWVALS_BUFFER[threadid][i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
-        NEWVALS_BUFFER[threadid][i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
-    } 
+        NEWVALS_BUFFER[i] = (start_dievals & OUTCOME_MASKS[i]); //make some holes in the dievals for newly rolled die vals 
+        NEWVALS_BUFFER[i] |= OUTCOME_DIEVALS[i]; // fill in the holes with the newly rolled die vals
+    } //TODO NEWVALS_BUFFER could be on the stack with the max span of 252. faster?? 
 
     for (usize i=range.start; i<range.stop; i++) { // this loop is a bunch of lookups so doesn't benefit from SIMD
         //= gather sorted =#
-            usize newvals_datum = NEWVALS_BUFFER[threadid][i];
+            usize newvals_datum = NEWVALS_BUFFER[i];
             usize sorted_dievals_id  = SORTED_DIEVALS_ID[newvals_datum];
         //= gather ev =#
             usize state_to_get_id = floor_state_id | sorted_dievals_id;
-            OUTCOME_EVS_BUFFER[threadid][i] = EV_CACHE[state_to_get_id];
+            OUTCOME_EVS_BUFFER[i] = EV_CACHE[state_to_get_id];
     } 
 
     #pragma GCC ivdepi 
@@ -949,7 +948,7 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
         // we have EVs for each "combination" but we need the average all "permutations" 
         // -- so we mutliply by the number of distinct arrangements for each combo 
         f32 count = OUTCOME_ARRANGEMENTS[i];
-        total_ev_for_selection +=  OUTCOME_EVS_BUFFER[threadid][i] * count ;
+        total_ev_for_selection +=  OUTCOME_EVS_BUFFER[i] * count ;
         outcomes_arrangements_count += count;
     } 
 
@@ -959,12 +958,6 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
 } // avg_ev
 
 void init_caches(){
-
-    OUTCOME_EVS_BUFFER = malloc(NUM_THREADS * sizeof(f32*));
-    for (int i = 0; i < NUM_THREADS; i++) { OUTCOME_EVS_BUFFER[i] = malloc(1683 * sizeof(f32)); }
-
-    NEWVALS_BUFFER = malloc(NUM_THREADS * sizeof(u16*));
-    for (int i = 0; i < NUM_THREADS; i++) { NEWVALS_BUFFER[i] = malloc(1683 * sizeof(DieVals)); }
 
     // setup helper values
     cache_selection_ranges(); 
