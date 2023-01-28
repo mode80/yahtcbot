@@ -7,7 +7,6 @@ Slot THREE_OF_A_KIND = 7; Slot FOUR_OF_A_KIND = 8;
 Slot FULL_HOUSE = 9; Slot SM_STRAIGHT = 10; 
 Slot LG_STRAIGHT = 11; Slot YAHTZEE = 12; Slot CHANCE = 13 ;
 
-int RANGE_IDX_FOR_SELECTION[32];
 DieVals SORTED_DIEVALS [32767]; 
 f32 SORTED_DIEVALS_ID [32767]; 
 Range SELECTION_RANGES[32];  
@@ -20,18 +19,16 @@ Choice* CHOICE_CACHE;
 Ints32 SELECTION_SET_OF_ALL_DICE_ONLY; //  selections are bitfields where '1' means roll and '0' means don't roll 
 Ints32 SET_OF_ALL_SELECTIONS; // Ints32 type can hold 32 different selections 
  
-Range SELECTION_RANGES[32] = {(Range){0, 1}, (Range){1, 7}, (Range){7, 13}, (Range){13, 34}, (Range){90, 96}, (Range){179, 200}, (Range){592, 613}, 
-    (Range){34, 90}, (Range){96, 102}, (Range){200, 221}, (Range){613, 634}, (Range){102, 158}, (Range){221, 242}, (Range){634, 690}, (Range){263, 319}, 
-    (Range){746, 872}, (Range){1005, 1011}, (Range){158, 179}, (Range){319, 340}, (Range){690, 746}, (Range){242, 263}, (Range){872, 928}, (Range){1011, 1067}, 
-    (Range){340, 466}, (Range){928, 949}, (Range){1067, 1123}, (Range){1249, 1305}, (Range){466, 592}, (Range){949, 1005}, (Range){1123, 1249}, 
-    (Range){1305, 1431}, (Range){1431, 1683} } ; //# = cache_selection_ranges()   # TODO confirm these are correct
+Range SELECTION_RANGES[32] = {(Range){0, 1}, (Range){1, 7}, (Range){7, 13}, (Range){13, 34}, (Range){34, 40}, (Range){40, 61},
+(Range){61, 82}, (Range){82, 138}, (Range){138, 144}, (Range){144, 165}, (Range){165, 186}, (Range){186, 242}, (Range){242, 263},
+(Range){263, 319}, (Range){319, 375}, (Range){375, 501}, (Range){501, 507}, (Range){507, 528}, (Range){528, 549}, (Range){549, 605},
+(Range){605, 626}, (Range){626, 682}, (Range){682, 738}, (Range){738, 864}, (Range){864, 885}, (Range){885, 941}, (Range){941, 997},
+(Range){997, 1123}, (Range){1123, 1179}, (Range){1179, 1305}, (Range){1305, 1431}, (Range){1431, 1683} };
 
-// int RANGE_IDX_FOR_SELECTION[32] = {0,1,2,3,7,4,8,11,17,5,9,12,20,14,18,23,27,6,10,13,19,15,21,24,28,16,22,25,29,26,30,31} ;
 const int SENTINEL=INT_MIN;
 u64 tick_limit;
 u64 tick_interval;
 u64 ticks = 0;
-int progress_blocks;
 
 const int NUM_THREADS = 6; 
 
@@ -355,24 +352,6 @@ DieVal dievals_get(const DieVals self, int index) {
 //-------------------------------------------------------------
 // INITIALIZERS 
 //-------------------------------------------------------------
-
-// this generates the ranges that correspond to the outcomes, within the set of all outcomes, indexed by a give selection 
-void cache_selection_ranges() {
-
-    int s = 0;
-
-    Ints8 idxs0to4 = (Ints8){5, {0,1,2,3,4} };
-    size_t result_count = 0; 
-    Ints8* combos = powerset( idxs0to4, &result_count);
-
-    for(int i=0; i<result_count; i++) {
-        int sets_count = n_take_r(6, combos[i].count, false, true); 
-        SELECTION_RANGES[i] = (Range){s, s+sets_count}; 
-        s += sets_count;
-    } 
-
-    free(combos);
-}
 
 
 // for fast access later, this generates an array of dievals in sorted form, 
@@ -960,7 +939,6 @@ f32 avg_ev(DieVals start_dievals, Selection selection, Slots slots, u8 upper_tot
 void init_caches(){
 
     // setup helper values
-    cache_selection_ranges(); 
     cache_sorted_dievals(); 
     cache_roll_outcomes_data();
 
@@ -1004,5 +982,4 @@ int main() {
     printf("EV with %d thread(s): %.4f\n", NUM_THREADS, EV_CACHE[game.id]);
 
     // run_tests();    
-
 }

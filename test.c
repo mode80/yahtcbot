@@ -237,27 +237,6 @@ void test_cache_sorted_dievals() {
     assert(is_same);
 }
 
-void test_cache_selection_ranges() {
-    // Call cache_selection_ranges to populate the SELECTION_RANGES array
-    cache_selection_ranges();
-
-    // Verify that the correct number of Range structures was generated
-    assert(sizeof(SELECTION_RANGES) / sizeof(Range) == 32);
-
-    // Verify some rangges are is correct as per Swift implementation 
-    Range final_range = SELECTION_RANGES[31];
-    assert(final_range.start==1431);
-    assert(final_range.stop==1683);
-
-    Range first_range = SELECTION_RANGES[0];
-    assert(first_range.start==0);
-    assert(first_range.stop==1);
-    
-    Range second_range = SELECTION_RANGES[1];
-    assert(second_range.start==1);
-    assert(second_range.stop==7);
-}
-
 void test_score_slot_with_dice() {
     DieVals dice = dievals_from_arr5((int[5]){1, 1, 1, 1, 1});
     assert(score_slot_with_dice(ACES, dice) == 5);
@@ -344,7 +323,6 @@ void run_tests() {
     test_get_unique_perms(); 
 
     test_cache_sorted_dievals();
-    test_cache_selection_ranges();
     test_score_slot_with_dice();  
     test_cache_roll_outcomes_data();     
     test_slots_powerset();

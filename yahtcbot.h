@@ -112,8 +112,6 @@ u8 best_upper_total(Slots slots);
 
 Ints64 useful_upper_totals(Slots self);
 
-void cache_selection_ranges();
-
 void cache_sorted_dievals();
 
 void cache_roll_outcomes_data();

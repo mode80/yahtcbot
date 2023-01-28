@@ -61,5 +61,6 @@
     "disasexpl.associations": {
         "**/*.c": "${fileDirname}/${fileBasenameNoExtension}.s",
     },
+    "cmake.configureOnOpen": true,
     // "disasexpl.useBinaryParsing": true
 }
